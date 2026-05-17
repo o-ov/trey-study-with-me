@@ -1073,12 +1073,17 @@ def api_english_articles():
     db = get_db()
     cur = db.cursor()
     cur.execute(
-        "SELECT id, title, content, image_path, page_num, order_num FROM english_articles WHERE week_date=? ORDER BY order_num",
+        "SELECT id, title, content, image_urls, week_date, order_num FROM english_articles WHERE week_date=? ORDER BY order_num",
         (week_date,)
     )
     rows = cur.fetchall()
     db.close()
-    articles = [dict(zip(["id","title","content","image_path","page_num","order_num"], r)) for r in rows]
+    articles = []
+    for r in rows:
+        articles.append({
+            "id": r[0], "title": r[1], "content": r[2],
+            "image_urls": json.loads(r[3]) if r[3] else [], "week_date": r[4], "order_num": r[5]
+        })
     return jsonify({"week_date": week_date, "articles": articles})
 
 

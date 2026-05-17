@@ -77,6 +77,9 @@ def extract_spelling_page0_l31(text):
     for i, l in enumerate(lines):
         if re.match(r'^L31\s*$', l):
             idx = i + 1
+            # 跳过空白行，找第一个编号行
+            while idx < len(lines) and not re.match(r'^\d+$', lines[idx]):
+                idx += 1
             for j in range(7):  # 前7个
                 base = idx + j * 5
                 if base + 4 < len(lines):

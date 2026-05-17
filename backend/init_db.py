@@ -239,6 +239,45 @@ def init():
     )
     """)
 
+    # ── 周计划表 ────────────────────────────────────────────────
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS weekly_plan (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        child_id INTEGER DEFAULT 1,
+        week_start TEXT,
+        week_end TEXT,
+        status TEXT DEFAULT 'draft',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS weekly_plan_item (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        weekly_plan_id INTEGER REFERENCES weekly_plan(id),
+        task_type TEXT,
+        unit_id TEXT,
+        unit_name TEXT,
+        content TEXT,
+        total_chars INTEGER DEFAULT 0,
+        chars TEXT
+    )
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS daily_task (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        child_id INTEGER DEFAULT 1,
+        weekly_plan_id INTEGER REFERENCES weekly_plan(id),
+        date TEXT,
+        task_type TEXT,
+        unit_id TEXT,
+        unit_name TEXT,
+        words TEXT,
+        content TEXT,
+        status TEXT DEFAULT 'pending',
+        completed_at DATETIME
+    )
+    """)
+
     # ── 英语表 ─────────────────────────────────────────────────
     cur.execute("""
     CREATE TABLE IF NOT EXISTS english_words (

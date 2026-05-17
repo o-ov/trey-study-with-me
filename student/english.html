@@ -527,8 +527,9 @@
       // 显示第一篇
       const article = articles[0];
       let html = `<div class="article-box">`;
-      if (article.image_path) {
-        html += `<img src="${API}/uploads/english/${week}/${article.image_path}" style="max-width:100%;border-radius:8px;margin-bottom:16px" />`;
+      const imgUrls = article.image_urls || [];
+      if (imgUrls.length > 0) {
+        html += `<img src="${API}/uploads/english/${week}/${imgUrls[0]}" style="max-width:100%;border-radius:8px;margin-bottom:16px" />`;
       }
       if (article.content) {
         const paragraphs = article.content.split('\n').filter(p => p.trim());

@@ -758,6 +758,151 @@ def redeem_reward():
 
 # ─── 启动 ───────────────────────────────────────────────────
 
+# ─── 周计划接口 ────────────────────────────────────────────
+from weekly_planner import (
+    create_weekly_plan, add_plan_item, ai_distribute_tasks,
+    confirm_weekly_plan, get_today_tasks, get_week_summary,
+    get_unit_chars, get_unit_chars_count
+)
+
+@app.route("/api/weekly-plan/current", methods=["GET"])
+def api_current_plan():
+    """获取当前周计划状态"""
+    child_id = 1
+    db = sqlite3.connect(DB_PATH)
+    cur = db.cursor()
+    today = datetime.now().strftime("%Y-%m-%d")
+    cur.execute("""
+        SELECT id, week_start, week_end, status, created_at
+        FROM weekly_plan
+        WHERE child_id = ? AND week_start <= ? AND week_end >= ?
+        ORDER BY id DESC LIMIT 1
+    """, (child_id, today, today))
+    row = cur.fetchone()
+    db.close()
+    if not row:
+        return jsonify({"has_plan": False})
+    return jsonify({
+        "has_plan": True,
+        "id": row[0], "week_start": row[1], "week_end": row[2],
+        "status": row[3], "created_at": row[4]
+    })
+
+
+@app.route("/api/weekly-plan", methods=["POST"])
+def api_create_plan():
+    """创建新周计划"""
+    data = request.json
+    week_start = data.get("week_start")
+    week_end = data.get("week_end")
+    if not week_start or not week_end:
+        return jsonify({"error": "缺少日期"}), 400
+    plan_id = create_weekly_plan(1, week_start, week_end)
+    return jsonify({"plan_id": plan_id})
+
+
+@app.route("/api/weekly-plan/<int:plan_id>/items", methods=["POST"])
+def api_add_item(plan_id):
+    """添加任务到周计划任务池"""
+    data = request.json
+    task_type = data.get("task_type")
+    unit_id = data.get("unit_id")
+    unit_name = data.get("unit_name")
+    content = data.get("content")
+    total_chars = data.get("total_chars", 0)
+    item_id = add_plan_item(plan_id, task_type, unit_id, unit_name, content, total_chars)
+    return jsonify({"item_id": item_id})
+
+
+@app.route("/api/weekly-plan/<int:plan_id>/preview", methods=["GET"])
+def api_plan_preview(plan_id):
+    """AI 分配预览（不写入，只返回预览）"""
+    db = sqlite3.connect(DB_PATH)
+    cur = db.cursor()
+    cur.execute("SELECT week_start, week_end FROM weekly_plan WHERE id = ?", (plan_id,))
+    row = cur.fetchone()
+    db.close()
+    if not row:
+        return jsonify({"error": "plan not found"}), 404
+    preview = ai_distribute_tasks(plan_id, row[0], row[1])
+    return jsonify(preview)
+
+
+@app.route("/api/weekly-plan/<int:plan_id>/confirm", methods=["POST"])
+def api_confirm_plan(plan_id):
+    """确认周计划，生成每日任务"""
+    result = confirm_weekly_plan(plan_id)
+    if "error" in result:
+        return jsonify(result), 404
+    return jsonify(result)
+
+
+@app.route("/api/daily-tasks/today", methods=["GET"])
+def api_today_tasks():
+    """获取今日任务"""
+    tasks = get_today_tasks(1)
+    return jsonify({"tasks": tasks, "date": datetime.now().strftime("%Y-%m-%d")})
+
+
+@app.route("/api/daily-tasks/<int:task_id>/complete", methods=["POST"])
+def api_complete_task(task_id):
+    """标记任务完成"""
+    db = sqlite3.connect(DB_PATH)
+    cur = db.cursor()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cur.execute(
+        "UPDATE daily_task SET status='completed', completed_at=? WHERE id=?",
+        (now, task_id)
+    )
+    # 记录
+    cur.execute("INSERT INTO daily_record (daily_task_id, child_id, completed_at) VALUES (?, 1, ?)",
+                (task_id, now))
+    db.commit()
+    db.close()
+    return jsonify({"success": True})
+
+
+@app.route("/api/week-summary", methods=["GET"])
+def api_week_summary():
+    """本周完成情况"""
+    return jsonify(get_week_summary(1))
+
+
+@app.route("/api/units", methods=["GET"])
+def api_units():
+    """获取所有课文单元列表"""
+    db = sqlite3.connect(DB_PATH)
+    cur = db.cursor()
+    cur.execute("SELECT DISTINCT unit_id, unit_name FROM words ORDER BY unit_id")
+    rows = cur.fetchall()
+    db.close()
+    units = [{"unit_id": r[0], "unit_name": r[1]} for r in rows]
+    return jsonify({"units": units})
+
+
+@app.route("/api/units/<unit_id>/chars", methods=["GET"])
+def api_unit_chars(unit_id):
+    """获取某课的字词"""
+    chars = get_unit_chars(unit_id)
+    count = get_unit_chars_count(unit_id)
+    return jsonify({"unit_id": unit_id, "chars": chars, "total": count})
+
+
+@app.route("/api/wrongbook", methods=["GET"])
+def api_wrongbook():
+    """获取错题本"""
+    child_id = 1
+    db = sqlite3.connect(DB_PATH)
+    cur = db.cursor()
+    cur.execute(
+        "SELECT char, word, pinyin, wrong_count FROM wrongbook WHERE child_id = ? ORDER BY wrong_count DESC",
+        (child_id,)
+    )
+    rows = cur.fetchall()
+    db.close()
+    return jsonify({"wrongbook": [{"char": r[0], "word": r[1], "pinyin": r[2], "wrong_count": r[3]} for r in rows]})
+
+
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 8080))

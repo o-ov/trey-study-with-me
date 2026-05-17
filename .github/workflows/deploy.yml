@@ -1,0 +1,52 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout latest code
+        run: |
+          cd /home/ubuntu/zlzp-dictation
+          git fetch origin
+          git reset --hard origin/main
+          git clean -fd
+
+      - name: Restart backend services
+        run: |
+          cd /home/ubuntu/zlzp-dictation
+          # Restart all services via systemd
+          sudo systemctl restart dictation-api || true
+          sudo systemctl restart dictation-tts || true
+          sudo systemctl restart dictation-grading || true
+          sudo systemctl restart dictation-student || true
+          sudo systemctl restart dictation-parent || true
+          sleep 3
+          # If systemd not available, kill old processes and restart via script
+          if ! sudo systemctl is-active dictation-api &>/dev/null; then
+            pkill -f "python3.*app.py" || true
+            pkill -f "python3.*tts.py" || true
+            pkill -f "python3.*grading_server" || true
+            pkill -f "http-server.*3000" || true
+            pkill -f "http-server.*3001" || true
+            sleep 1
+            cd /home/ubuntu/zlzp-dictation
+            nohup python3 backend/app.py > /tmp/zlzp-api.log 2>&1 &
+            nohup python3 backend/tts.py > /tmp/zlzp-tts.log 2>&1 &
+            nohup python3 grading_server.py > /tmp/zlzp-grading.log 2>&1 &
+            cd student && nohup npx http-server -p 3000 -c-1 --bind-addr 0.0.0.0 > /tmp/zlzp-student.log 2>&1 &
+            cd ../parent && nohup npx http-server -p 3001 -c-1 --bind-addr 0.0.0.0 > /tmp/zlzp-parent.log 2>&1 &
+            echo "Services started via nohup"
+          fi
+
+      - name: Health check
+        run: |
+          sleep 5
+          curl -sf http://localhost:8080/health || echo "API: FAIL"
+          curl -sf http://localhost:8082/health || echo "TTS: FAIL"
+          curl -sf http://localhost:3000 | grep -q html && echo "Student: OK" || echo "Student: FAIL"
+          curl -sf http://localhost:3001 | grep -q html && echo "Parent: OK" || echo "Parent: FAIL"

@@ -13,8 +13,9 @@ import urllib.request
 from datetime import datetime
 
 PORT = 8081
-SESSIONS_DIR = "/root/dictation_sessions"
-WRONGBOOK_FILE = "/root/dictation_sessions/wrongbook.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
+WRONGBOOK_FILE = os.path.join(SESSIONS_DIR, "wrongbook.json")
 
 os.makedirs(SESSIONS_DIR, exist_ok=True)
 

@@ -6,159 +6,379 @@
   <title>错题复习</title>
   <link rel="stylesheet" href="style.css">
   <style>
-    .step { display: none; }
-    .step.active { display: block; }
+    .card { border-radius: 20px; }
+
+    /* ── 列表页 ── */
+    #view-list { padding-bottom: 40px; }
+    .char-card {
+      background: #fff; border-radius: 16px;
+      padding: 16px 20px; margin: 10px 16px;
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer; transition: transform 0.1s;
+    }
+    .char-card:active { transform: scale(0.98); }
+    .char-big { font-size: 48px; font-weight: 800; color: var(--text); min-width: 60px; text-align: center; }
+    .char-info { flex: 1; }
+    .char-label { font-weight: 700; font-size: 17px; margin-bottom: 4px; }
+    .char-meta { font-size: 13px; color: var(--sub); }
+    .arrow { font-size: 22px; color: #ddd; }
+    #empty { text-align: center; padding: 100px 0; }
+    #empty .emoji { font-size: 64px; margin-bottom: 16px; }
+    #empty .text { font-size: 18px; font-weight: 700; color: var(--text); }
+
+    /* ── 练习页 ── */
+    #view-practice { padding-bottom: 40px; }
+    .top-bar {
+      background: var(--primary); color: #fff;
+      padding: 14px 20px; display: flex; align-items: center; gap: 12px;
+      border-radius: 0 0 20px 20px;
+    }
+    .back-btn2 {
+      background: rgba(255,255,255,20%); border: none;
+      color: #fff; font-size: 20px; padding: 6px 12px;
+      border-radius: 10px; cursor: pointer;
+    }
+    .progress { flex: 1; text-align: center; font-weight: 700; font-size: 16px; }
+
+    /* 字卡 */
+    .char-area {
+      background: #fff; margin: 16px; border-radius: 20px;
+      padding: 24px 20px 20px; text-align: center;
+    }
+    .play-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 36px; padding: 8px; margin-bottom: 8px;
+      transition: transform 0.15s;
+    }
+    .play-btn:active { transform: scale(1.2); }
+    .big-char { font-size: 80px; font-weight: 900; color: #222; margin: 4px 0; }
+    .big-pinyin { font-size: 22px; color: var(--sub); margin-bottom: 4px; }
+    .big-word { font-size: 18px; color: #888; }
+
+    /* 米字格 */
+    .grid-card {
+      background: #fff; margin: 0 16px 16px; border-radius: 20px;
+      padding: 20px; text-align: center;
+    }
+    #drawCanvas { touch-action: none; display: block; width: auto; height: auto; max-width: 100%; }
+
+    /* 工具栏 */
+    .toolbar { display: flex; gap: 10px; justify-content: center; }
+    .toolbar button {
+      flex: 1; padding: 12px; border-radius: 12px;
+      border: none; font-size: 15px; font-weight: 700; cursor: pointer;
+    }
+    .btn-clear { background: #F5F5F5; color: #666; }
+    .btn-submit { background: var(--primary); color: #fff; }
+    .btn-submit:active { background: #0040cc; }
+
+    /* ── 完成页 ── */
+    #view-done { text-align: center; padding-top: 80px; }
+    .done-emoji { font-size: 80px; margin-bottom: 16px; }
+    .done-title { font-size: 24px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
+    .done-sub { font-size: 15px; color: var(--sub); margin-bottom: 32px; }
+    .done-btn {
+      display: inline-block; background: var(--primary); color: #fff;
+      padding: 14px 40px; border-radius: 14px; font-size: 16px; font-weight: 700;
+      cursor: pointer; border: none; text-decoration: none;
+    }
+
+    /* 提交中 */
+    #submitting { display: none; text-align: center; padding: 60px 0; }
+    .spinner { font-size: 48px; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .submit-text { font-size: 16px; color: var(--sub); margin-top: 12px; }
   </style>
 </head>
 <body>
 
-<div id="step_list" class="step active">
-  <div class="page-header">
-    <button class="back-btn" onclick="history.back()">←</button>
-    <span>错题复习</span>
+<!-- ═══ 列表页 ═══ -->
+<div id="view-list">
+  <div class="top-bar">
+    <button class="back-btn" onclick="location.href='today.html'">←</button>
+    <span style="font-weight:700;font-size:17px">📕 错字复习</span>
   </div>
-  <div id="wrong_list" class="card" style="margin-top:8px"></div>
-  <div id="empty_hint" style="text-align:center;color:var(--sub);padding:40px;font-size:15px;display:none">
-    🎉 太棒了！暂无待复习错字
+  <div id="char-list"></div>
+  <div id="empty">
+    <div class="emoji">🎉</div>
+    <div class="text">太棒了！暂无待复习错字</div>
   </div>
 </div>
 
-<div id="step_practice" class="step">
-  <div class="page-header">
-    <span id="progress_text">第 1/N</span>
-    <div style="flex:1"></div>
-    <button onclick="playTTS()" style="background:none;border:none;font-size:28px;cursor:pointer">🔊</button>
+<!-- ═══ 练习页 ═══ -->
+<div id="view-practice" style="display:none">
+  <div class="top-bar">
+    <button class="back-btn2" onclick="showList()">←</button>
+    <span class="progress" id="progress-text">第 1/18</span>
   </div>
-  <div class="card" style="text-align:center">
-    <div id="pinyin_show" class="pinyin-display"></div>
-    <div id="char_show" class="char-display" style="color:#999;font-size:48px">？</div>
+
+  <div class="char-area">
+    <button class="play-btn" onclick="playTTS()" title="播放发音">🔊</button>
+    <div class="big-pinyin" id="pinyin-show"></div>
+    <div class="big-char" id="char-show">?</div>
+    <div class="big-word" id="word-show"></div>
   </div>
-  <div class="card">
-    <canvas id="drawCanvas" style="width:100%;height:200px;display:block"></canvas>
+
+  <div class="grid-card">
+    <canvas id="drawCanvas"></canvas>
+  </div>
+
+  <div style="padding: 0 16px 16px">
     <div class="toolbar">
-      <button onclick="clearCanvas()" style="background:#F5F5F5">🗑️ 重写</button>
+      <button class="btn-clear" onclick="clearCanvas()">🗑️ 重写</button>
+      <button class="btn-submit" onclick="submitAndNext()">✓ 提交 →</button>
     </div>
   </div>
-  <div style="text-align:center;margin-top:12px" class="card">
-    <button class="btn btn-success btn-large" onclick="submitAndNext()">✓ 下一字</button>
-  </div>
 </div>
 
-<div id="step_done" class="step">
-  <div class="done-page">
-    <div class="done-emoji">🎉</div>
-    <div class="done-title">复习完成！</div>
-    <div class="done-pts">本次获得 +8 积分</div>
-    <button class="btn btn-primary btn-large" style="margin-top:32px;max-width:260px" onclick="location.href='index.html'">
-      🏠 返回首页
-    </button>
-  </div>
+<!-- ═══ 提交中 ═══ -->
+<div id="submitting">
+  <div class="spinner">⏳</div>
+  <div class="submit-text">正在发送给小树爸爸…</div>
+</div>
+
+<!-- ═══ 完成页 ═══ -->
+<div id="view-done" style="display:none">
+  <div class="done-emoji">🎉</div>
+  <div class="done-title">复习完成！</div>
+  <div class="done-sub">已发给小树爸爸 ✨</div>
+  <button class="done-btn" onclick="location.href='today.html'">返回任务页</button>
 </div>
 
 <script>
-const API = 'http://' + location.hostname + ':8080/api';
-let wrongChars = [];
-let currentIdx = 0;
-let sessionId = null;
-let sessionKey = null;
+const API  = 'http://' + location.hostname + ':8080/api';
+const TTS  = 'http://' + location.hostname + ':8082';
 
+let wrongChars  = [];
+let currentIdx  = 0;
+let submitted   = [];   // 每个字对应的 canvas dataURL
+
+// ── 加载错字列表 ────────────────────────────────────────────
 async function load() {
-  const wb = await fetch(API + '/wrongbook').then(r=>r.json());
-  wrongChars = (wb.wrongChars || []).filter(w => !w.reviewed);
-  if (wrongChars.length === 0) {
-    document.getElementById('empty_hint').style.display = 'block';
-    return;
+  try {
+    const wb = await fetch(API + '/wrongbook').then(r => r.json());
+    wrongChars = (wb.wrongChars || []).filter(w => !w.reviewed);
+  } catch(e) {
+    wrongChars = [];
   }
-  renderList();
-  showStep('list');
+  if (wrongChars.length === 0) {
+    document.getElementById('empty').style.display = 'block';
+    document.getElementById('char-list').style.display = 'none';
+  } else {
+    renderList();
+  }
 }
 
 function renderList() {
-  const el = document.getElementById('wrong_list');
-  el.innerHTML = wrongChars.map((w,i) => (
-    '<div class="wrong-item" data-idx="' + i + '">'
-    + '<div style="font-size:36px;margin-right:12px">📕</div>'
-    + '<div><div style="font-size:18px;font-weight:700">' + w.char + '</div>'
-    + '<div style="font-size:12px;color:var(--sub)">' + (w.pinyin||'') + ' · 错' + w.wrong_count + '次</div></div>'
-    + '<div style="flex:1"></div><div style="color:var(--primary)">去复习 →</div></div>'
-  )).join('');
-  el.querySelectorAll('.wrong-item').forEach(item => {
-    item.addEventListener('click', () => startReview(+item.dataset.idx));
-  });
+  const list = document.getElementById('char-list');
+  list.innerHTML = wrongChars.map((w, i) => `
+    <div class="char-card" onclick="startReview(${i})">
+      <div class="char-big">${w.char}</div>
+      <div class="char-info">
+        <div class="char-label">${w.word || w.char}</div>
+        <div class="char-meta">错 ${w.wrong_count} 次${w.pinyin ? ' · ' + w.pinyin : ''}</div>
+      </div>
+      <div class="arrow">›</div>
+    </div>
+  `).join('');
 }
 
-function showStep(name) {
-  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
-  document.getElementById('step_' + name).classList.add('active');
+// ── 练习页 ─────────────────────────────────────────────────
+function showList() {
+  document.getElementById('view-list').style.display = 'block';
+  document.getElementById('view-practice').style.display = 'none';
+  document.getElementById('view-done').style.display = 'none';
 }
 
-async function startReview(idx) {
+function startReview(idx) {
   currentIdx = idx;
+  submitted[idx] = null;
+  document.getElementById('view-list').style.display = 'none';
+  document.getElementById('view-practice').style.display = 'block';
+  document.getElementById('view-done').style.display = 'none';
+
   const w = wrongChars[idx];
+  document.getElementById('progress-text').textContent =
+    '第 ' + (idx + 1) + ' / ' + wrongChars.length;
+  document.getElementById('char-show').textContent = w.char || '';
+  document.getElementById('pinyin-show').textContent = w.pinyin || '';
+  document.getElementById('word-show').textContent = (w.word && w.word !== w.char) ? w.word : '';
 
-  // 创建临时 session
-  const res = await fetch(API + '/sessions', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ mode:'review', unit_ids:[], child_id:1, words:[w] })
-  }).catch(()=>null);
-
-  sessionKey = res ? res.session_key : 'review_' + Date.now();
-
-  document.getElementById('progress_text').textContent = '第 ' + (idx+1) + '/' + wrongChars.length + ' 字';
-  document.getElementById('char_show').textContent = w.char || '';
-  document.getElementById('pinyin_show').textContent = w.pinyin || '';
   clearCanvas();
-  showStep('practice');
+  setTimeout(() => playTTS(), 300);
 }
 
-async function playTTS() {
+// ── TTS ────────────────────────────────────────────────────
+function playTTS() {
   const w = wrongChars[currentIdx];
-  const text = w.char || '';
-  try {
-    await new Audio('http://' + location.hostname + ':8082/tts?text=' + encodeURIComponent(text)).play();
-  } catch(e) {}
+  const text = w.word || w.char || '';
+  if (!text) return;
+  new Audio(TTS + '/tts?text=' + encodeURIComponent(text)).play().catch(() => {});
+}
+
+// ── 米字格（按字数排格） ────────────────────────────────────
+function getWordLen() {
+  const w = wrongChars[currentIdx];
+  const text = (w?.char || w?.word || '').length;
+  return text || 1;
+}
+
+function drawGrid() {
+  const canvas = document.getElementById('drawCanvas');
+  const ctx   = canvas.getContext('2d');
+  const n     = getWordLen();
+  const gap   = 6;
+  const containerW = canvas.parentElement.clientWidth || 300;
+  const size = Math.floor((containerW - gap * (n - 1)) / n);
+  const safeSize = Math.max(size, 60);
+  const totalW = n * safeSize + gap * (n - 1);
+  canvas.width  = totalW;
+  canvas.height = safeSize;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, totalW, safeSize);
+  for (let i = 0; i < n; i++) {
+    const x = i * (safeSize + gap);
+    ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(x, 0, safeSize, safeSize);
+    ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 0.8; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x, safeSize / 2); ctx.lineTo(x + safeSize, safeSize / 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + safeSize / 2, 0); ctx.lineTo(x + safeSize / 2, safeSize); ctx.stroke();
+    ctx.strokeStyle = '#3498db'; ctx.lineWidth = 0.6; ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + safeSize, safeSize); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + safeSize, 0); ctx.lineTo(x, safeSize); ctx.stroke();
+    ctx.setLineDash([]);
+  }
 }
 
 function clearCanvas() {
-  const c = document.getElementById('drawCanvas');
-  c.width = c.offsetWidth; c.height = 200;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height);
-  ctx.strokeStyle='#1A1A2E'; ctx.lineWidth=6; ctx.lineCap='round';
+  drawGrid();
+  const ctx = document.getElementById('drawCanvas').getContext('2d');
+  ctx.strokeStyle = '#1A1A2E';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
 }
 
-const c = document.getElementById('drawCanvas');
-const ctx = c.getContext('2d');
-let drawing=false, lastX=0, lastY=0;
-c.addEventListener('mousedown',e=>{drawing=true;[lastX,lastY]=[e.clientX-c.getBoundingClientRect().left,e.clientY-c.getBoundingClientRect().top];});
-c.addEventListener('mousemove',e=>{if(!drawing)return;ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(e.clientX-c.getBoundingClientRect().left,e.clientY-c.getBoundingClientRect().top);ctx.stroke();[lastX,lastY]=[e.clientX-c.getBoundingClientRect().left,e.clientY-c.getBoundingClientRect().top];});
-c.addEventListener('mouseup',()=>drawing=false);
-c.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const t=e.touches[0];const r=c.getBoundingClientRect();[lastX,lastY]=[t.clientX-r.left,t.clientY-r.top];},{passive:false});
-c.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const t=e.touches[0];const r=c.getBoundingClientRect();ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(t.clientX-r.left,t.clientY-r.top);ctx.stroke();[lastX,lastY]=[t.clientX-r.left,t.clientY-r.top];},{passive:false});
-c.addEventListener('touchend',()=>drawing=false);
+const canvas = document.getElementById('drawCanvas');
+let drawing = false, lastX = 0, lastY = 0;
 
-async function submitAndNext() {
-  const w = wrongChars[currentIdx];
-  // 复习默认按正确处理（可由家长端重新批改）
-  try {
-    await fetch(API + '/points/add', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ points: 8 })
-    });
-  } catch(e) {}
+function off(e) {
+  const r = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / r.width;
+  const scaleY = canvas.height / r.height;
+  return [(e.clientX - r.left) * scaleX, (e.clientY - r.top) * scaleY];
+}
+
+canvas.addEventListener('mousedown',  e => { drawing = true; [lastX, lastY] = off(e); });
+canvas.addEventListener('mousemove',  e => {
+  if (!drawing) return;
+  const ctx = canvas.getContext('2d');
+  ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(...off(e)); ctx.stroke();
+  lastX = off(e)[0]; lastY = off(e)[1];
+});
+canvas.addEventListener('mouseup',    () => drawing = false);
+canvas.addEventListener('mouseleave', () => drawing = false);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; [lastX, lastY] = off(e.touches[0]); }, {passive: false});
+canvas.addEventListener('touchmove',  e => { e.preventDefault(); if (!drawing) return; const ctx = canvas.getContext('2d'); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(...off(e.touches[0])); ctx.stroke(); lastX = off(e.touches[0])[0]; lastY = off(e.touches[0])[1]; }, {passive: false});
+canvas.addEventListener('touchend',   () => drawing = false);
+
+// ── 提交当前字，进入下一个 ─────────────────────────────────
+function submitAndNext() {
+  // 保存当前 canvas
+  submitted[currentIdx] = document.getElementById('drawCanvas').toDataURL('image/png');
 
   currentIdx++;
   if (currentIdx >= wrongChars.length) {
-    showStep('done');
+    // 全部写完 → 合并发飞书
+    finishAndSend();
   } else {
     startReview(currentIdx);
   }
 }
 
-document.addEventListener('contextmenu',e=>e.preventDefault());
-load();
+// ── 合并所有 canvas，发飞书 ────────────────────────────────
+async function finishAndSend() {
+  document.getElementById('view-practice').style.display = 'none';
+  document.getElementById('submitting').style.display = 'block';
+
+  const n       = wrongChars.length;
+  const cell    = 180;
+  const cols    = Math.min(n, 4);
+  const rows    = Math.ceil(n / cols);
+  const W       = cols * cell + (cols + 1) * 8;
+  const H       = rows * cell + (rows + 1) * 8 + 50; // 50px header
+  const combo   = document.createElement('canvas');
+  combo.width   = W;
+  combo.height = H;
+  const ctx    = combo.getContext('2d');
+
+  // 背景
+  ctx.fillStyle = '#f8f9fa';
+  ctx.fillRect(0, 0, W, H);
+
+  // 标题
+  ctx.fillStyle = '#004BFE';
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillText('小树 · 错字复习 ' + new Date().toLocaleDateString('zh-CN'), 12, 28);
+
+  // 逐字贴上
+  for (let i = 0; i < n; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x   = 8 + col * (cell + 8);
+    const y   = 50 + 8 + row * (cell + 8);
+
+    const dataURL = submitted[i];
+    if (dataURL) {
+      const img = new Image();
+      img.src = dataURL;
+      await new Promise(resolve => { img.onload = resolve; });
+      ctx.drawImage(img, x, y, cell, cell);
+    }
+
+    // 字标签
+    const w  = wrongChars[i];
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(w.char, x + cell / 2, y + cell + 18);
+    if (w.pinyin) {
+      ctx.font = '12px sans-serif';
+      ctx.fillStyle = '#999';
+      ctx.fillText(w.pinyin, x + cell / 2, y + cell + 34);
+    }
+    ctx.textAlign = 'left';
+  }
+
+  const finalURL = combo.toDataURL('image/png');
+
+  // ── 发飞书（走后端代理） ──
+  await sendFeishuImage(finalURL, wrongChars.length);
+
+  // 标记已复习
+  for (const w of wrongChars) {
+    fetch(API + '/wrongbook/' + w.id + '/review', { method: 'POST' }).catch(() => {});
+  }
+
+  document.getElementById('submitting').style.display = 'none';
+  document.getElementById('view-done').style.display = 'block';
+}
+
+  // ── 发飞书（走后端代理） ───────────────────────────────────
+  async function sendFeishuImage(imgDataURL, charCount) {
+    const resp = await fetch(API + '/review/send-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imgDataURL.replace(/^data:image\/\w+;base64,/, ''), char_count: charCount })
+    });
+    return resp.json();
+  }
+
+document.addEventListener('DOMContentLoaded', () => {
+  clearCanvas();
+  load();
+});
+window.addEventListener('resize', () => { if (wrongChars.length > 0) clearCanvas(); });
 </script>
 </body>
 </html>

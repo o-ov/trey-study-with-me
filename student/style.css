@@ -12,6 +12,23 @@
   --error: #FF4D4F;
   --radius: 16px;
   --shadow: 0 4px 16px rgba(74,144,217,0.15);
+  --border: #eee;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #5BA0E8;
+    --primary-dark: #4A8BD6;
+    --accent: #F5A623;
+    --bg: #121218;
+    --card: #1E1E26;
+    --text: #E8E8F0;
+    --sub: #999;
+    --success: #52C41A;
+    --error: #FF4D4F;
+    --shadow: 0 4px 16px rgba(0,0,0,0.4);
+    --border: #2A2A36;
+  }
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -67,8 +84,8 @@ body {
 .tab-bar {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  background: #fff;
-  border-top: 1px solid #eee;
+  background: var(--card);
+  border-top: 1px solid var(--border);
   display: flex;
   justify-content: space-around;
   padding: 8px 0;

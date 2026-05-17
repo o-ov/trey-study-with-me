@@ -8,14 +8,53 @@
   <style>
     .step { display: none; }
     .step.active { display: block; }
+    .char-display { min-height: 52px; }
+
+    /* 单字提示 */
+    #word_hint {
+      font-size: 14px;
+      color: var(--sub);
+      margin-top: 6px;
+      min-height: 20px;
+    }
   </style>
 </head>
 <body>
 
-<!-- Step 1: 单元选择 -->
-<div id="step_select" class="step active">
+<!-- Step: 练习（今日任务直达） -->
+<div id="step_practice" class="step active">
   <div class="page-header">
-    <button class="back-btn" onclick="history.back()">←</button>
+    <button class="back-btn" onclick="location.href='today.html'">←</button>
+    <span id="progress_text">听写练习</span>
+  </div>
+
+  <div class="card" style="text-align:center">
+    <div id="pinyin_show" class="pinyin-display"></div>
+    <div id="char_show" class="char-display"></div>
+    <div id="word_hint"></div>
+  </div>
+
+  <div class="card" style="text-align:center">
+    <button onclick="playTTS()" style="background:none;border:none;cursor:pointer;font-size:32px;padding:8px" title="播放发音">🔊</button>
+    <div id="gridContainer" style="display:flex;justify-content:center;align-items:center;overflow:hidden">
+      <canvas id="drawCanvas" style="display:block;width:auto;height:auto;max-width:100%"></canvas>
+    </div>
+    <div class="toolbar">
+      <button onclick="clearCanvas()" style="background:#F5F5F5;color:var(--text)">🗑️ 重写</button>
+      <button onclick="playTTS()" style="background:#FFF3E0;color:#E65100;margin-left:8px">🔊 重播</button>
+      <button onclick="handleMainAction()" style="background:#E8F5E9;color:var(--success);margin-left:8px" id="main_btn">下一个 →</button>
+    </div>
+  </div>
+
+  <div id="finish_hint" style="display:none;text-align:center;margin-top:12px" class="card">
+    <button class="btn btn-success btn-large" onclick="submitSession()">✓ 提交完成</button>
+  </div>
+</div>
+
+<!-- Step: 单元选择（自由练习） -->
+<div id="step_select" class="step">
+  <div class="page-header">
+    <button class="back-btn" onclick="location.href='today.html'">←</button>
     <span>选择练习单元</span>
   </div>
 
@@ -30,54 +69,24 @@
   </div>
 </div>
 
-<!-- Step 2: 练习 -->
-<div id="step_practice" class="step">
-  <div class="page-header">
-    <span id="progress_text">第 1/10 字</span>
-    <div style="flex:1"></div>
-    <button id="tts_btn" onclick="playTTS()" style="background:none;border:none;font-size:28px;cursor:pointer">🔊</button>
-  </div>
-
-  <div class="card" style="text-align:center">
-    <div id="pinyin_show" class="pinyin-display"></div>
-    <div id="char_show" class="char-display"></div>
-  </div>
-
-  <div class="card">
-    <div id="gridContainer" style="display:flex;justify-content:center;align-items:center;overflow:hidden">
-      <canvas id="drawCanvas" style="display:block;width:auto;height:auto;max-width:100%"></canvas>
-    </div>
-    <div class="toolbar">
-      <button onclick="clearCanvas()" style="background:#F5F5F5;color:var(--text)">🗑️ 重写</button>
-      <button onclick="saveAndNext()" style="background:#E8F5E9;color:var(--success);margin-left:8px" id="next_btn">下一个 →</button>
-    </div>
-  </div>
-
-  <div id="finish_hint" style="text-align:center;margin-top:12px" class="card">
-    <button class="btn btn-success btn-large" onclick="submitSession()">✓ 完成练习</button>
-  </div>
-</div>
-
-<!-- Step 3: 完成 -->
+<!-- Step: 完成 -->
 <div id="step_done" class="step">
   <div class="done-page">
     <div class="done-emoji">🎉</div>
-    <div class="done-title">今日练习完成！</div>
+    <div class="done-title">听写完成！</div>
     <div class="done-pts">本次获得 +5 积分</div>
-    <div style="font-size:14px;color:var(--sub);max-width:280px;line-height:1.6">
-      「写得很棒！每个字都认真在田字格里，继续保持这份专注哦 💪」
-    </div>
-    <button class="btn btn-primary btn-large" style="margin-top:32px;max-width:260px" onclick="location.href='index.html'">
-      🏠 返回首页
+    <button class="btn btn-primary btn-large" style="margin-top:32px;max-width:260px" onclick="location.href='today.html'">
+      📅 返回任务页
     </button>
   </div>
 </div>
 
 <script>
-const API  = 'http://' + location.hostname + ':8080/api';
-const mode = new URLSearchParams(location.search).get('mode') || 'dictation';
+const API      = 'http://' + location.hostname + ':8080/api';
+const TTS_BASE = 'http://' + location.hostname + ':8082';
 
-// state
+const taskId = new URLSearchParams(location.search).get('task_id');
+
 let units = [];
 let selectedUnits = new Set();
 let sessionId = null;
@@ -85,9 +94,107 @@ let sessionKey = null;
 let words = [];
 let currentIdx = 0;
 let uploaded = [];
-let charIds = [];
+let isSaving = false;
+let taskUnitName = ''; // 当前任务的课文名，用于单字提示
 
-// ── 单元选择 ───────────────────────────────────────────────
+// ── 初始化 ─────────────────────────────────────────────────
+
+async function init() {
+  if (taskId) {
+    const res = await fetch(API + '/daily-tasks/today?child_id=1');
+    const data = await res.json();
+    const task = data.tasks.find(t => t.id == taskId && t.task_type === 'dictation');
+    if (task && task.words) {
+      words = task.words;
+      sessionKey = 'task_' + taskId + '_' + Date.now();
+      uploaded = new Array(words.length).fill(false);
+      currentIdx = 0;
+      taskUnitName = task.unit_name || '';
+      showStep('practice');
+      showWord(0);
+    } else {
+      alert('任务数据异常');
+      location.href = 'today.html';
+    }
+  } else {
+    showStep('select');
+    loadUnits();
+  }
+}
+
+// ── 今日任务练习 ───────────────────────────────────────────
+
+function isLastWord() {
+  return currentIdx === words.length - 1;
+}
+
+function showWord(idx) {
+  console.log('[showWord] idx=' + idx, 'total=' + words.length);
+  currentIdx = idx;
+  const w = words[idx];
+  const last = isLastWord();
+
+  document.getElementById('progress_text').textContent = '第 ' + (idx+1) + ' / ' + words.length + ' 字';
+  document.getElementById('char_show').textContent = '';
+  document.getElementById('pinyin_show').textContent = '';
+  document.getElementById('finish_hint').style.display = 'none';
+
+  console.log('[showWord] calling clearCanvas');
+  clearCanvas();
+
+  // 最后一个字 → 按钮变成"提交"
+  const btn = document.getElementById('main_btn');
+  if (last) {
+    btn.textContent = '✓ 提交';
+    btn.style.background = '#004BFE';
+    btn.style.color = '#fff';
+  } else {
+    btn.textContent = '下一个 →';
+    btn.style.background = '#E8F5E9';
+    btn.style.color = 'var(--success)';
+  }
+
+  // 单字提示：显示「XX」的Y
+  const charText = w.char || '';
+  const wordText = w.word || '';
+  const isSingle = charText.length === 1 && wordText && wordText !== charText;
+  const hintEl = document.getElementById('word_hint');
+  if (isSingle) {
+    // TTS 播「XX」的Y，提示也显示「XX」的Y
+    hintEl.textContent = '「' + wordText + '」的' + charText;
+    hintEl.style.color = '#888';
+    hintEl.style.fontSize = '14px';
+  } else {
+    hintEl.textContent = '';
+  }
+
+  // TTS：单字播「XX」的Y，多字播字
+  const ttsText = isSingle ? ('「' + wordText + '」的' + charText) : (charText || wordText || '');
+  playTTS(ttsText);
+}
+
+// ── 按钮动作（下一个 / 提交） ───────────────────────────────
+
+async function handleMainAction() {
+  const btn = document.getElementById('main_btn');
+  if (btn.disabled) return; // 防重复点击，3秒内只能点一次
+  btn.disabled = true;
+  setTimeout(() => { btn.disabled = false; }, 3000);
+
+  if (isSaving) return;
+  isSaving = true;
+  await saveImage();
+  isSaving = false;
+
+  if (isLastWord()) {
+    await submitSession();
+  } else {
+    currentIdx++;
+    showWord(currentIdx);
+  }
+}
+
+// ── 自由练习：单元选择 ──────────────────────────────────────
 
 async function loadUnits() {
   const data = await fetch(API + '/words/units').then(r=>r.json());
@@ -102,6 +209,9 @@ async function loadUnits() {
     div.onclick = () => toggleUnit(u.unit_id, div);
     grid.appendChild(div);
   });
+  const allWords = await fetch(API + '/words').then(r=>r.json());
+  words = allWords;
+  updateSelectInfo();
 }
 
 function toggleUnit(id, el) {
@@ -138,169 +248,98 @@ function updateSelectInfo() {
 
 async function startPractice() {
   if (selectedUnits.size === 0) { alert('请至少选择一个单元'); return; }
-  const res = await fetch(API + '/sessions', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      mode: mode,
-      unit_ids: [...selectedUnits],
-      child_id: 1
-    })
-  }).then(r=>r.json());
-  sessionId  = res.session_id;
-  sessionKey = res.session_key;
-  words      = res.words;
-  charIds    = res.char_ids || [];
-  uploaded   = new Array(words.length).fill(false);
+  const selected = words.filter(w=>selectedUnits.has(w.unit_id));
+  if (selected.length === 0) { alert('所选单元没有字'); return; }
+  words = selected;
+  uploaded = new Array(words.length).fill(false);
+  sessionKey = 'free_' + Date.now();
   currentIdx = 0;
-
   showStep('practice');
   showWord(0);
 }
+
+// ── 公共 ───────────────────────────────────────────────────
 
 function showStep(name) {
   document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
   document.getElementById('step_' + name).classList.add('active');
 }
 
-// ── 练习 ─────────────────────────────────────────────────
-
-function showWord(idx) {
-  currentIdx = idx;
-  const w = words[idx];
-  document.getElementById('progress_text').textContent = '第 ' + (idx+1) + '/' + words.length + ' 字';
-  // 听写模式：隐藏字和拼音；看拼音写模式：只显示拼音
-  document.getElementById('char_show').textContent  = '';
-  document.getElementById('pinyin_show').textContent = mode === 'pinyin' ? (w.pinyin || '') : '';
-  clearCanvas();
-  // "下一个"按钮：最后一个字时隐藏
-  document.getElementById('next_btn').style.display = 'inline-block';
-  document.getElementById('finish_hint').style.display = 'none';
-}
-
-const TTS_BASE = 'http://47.243.65.57:8082';
-
-async function playTTS() {
-  const w = words[currentIdx];
-  const text = w.char || w.word || '';
+async function playTTS(text) {
   if (!text) return;
+  console.log('[playTTS] playing:', text);
   try {
     const audio = new Audio(TTS_BASE + '/tts?text=' + encodeURIComponent(text));
+    audio.onended = () => console.log('[playTTS] ended:', text);
+    audio.onerror = () => console.error('[playTTS] error:', text);
     await audio.play();
   } catch(e) { console.error(e); }
 }
 
-// ── 米字格绘制（按字数动态，正方形自适应） ──────────────────
+// ── 米字格 ─────────────────────────────────────────────────
 
 function getWordLen() {
-  const w = words[currentIdx];
-  const text = w.char || w.word || '';
-  return text.length;
+  const text = (words[currentIdx]?.char || words[currentIdx]?.word || '').length;
+  return text || 1;
 }
 
 function drawGrid() {
   const canvas = document.getElementById('drawCanvas');
   const ctx   = canvas.getContext('2d');
-  const n     = getWordLen(); // 当前字数（1~4）
-  const gap   = 6;            // 格子间距(px)
-
-  // 用 canvas 父容器（gridContainer）的实际像素宽度来计算
-  // gridContainer 在 card 内，宽度受 card 约束
+  const n     = getWordLen();
+  const gap   = 6;
   const containerW = canvas.parentElement.clientWidth || 300;
   const size = Math.floor((containerW - gap * (n - 1)) / n);
-  const safeSize = Math.max(size, 60); // 最小60px
-
+  const safeSize = Math.max(size, 60);
   const totalW = n * safeSize + gap * (n - 1);
   canvas.width  = totalW;
   canvas.height = safeSize;
-
-  // 清空
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, totalW, safeSize);
-
-  // 逐格渲染米字格
   for (let i = 0; i < n; i++) {
     const x = i * (safeSize + gap);
-
-    // 外框
-    ctx.strokeStyle = '#aaa';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1.5;
     ctx.strokeRect(x, 0, safeSize, safeSize);
-
-    // 横中线（红）
-    ctx.strokeStyle = '#e74c3c';
-    ctx.lineWidth = 0.8;
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.moveTo(x, safeSize / 2);
-    ctx.lineTo(x + safeSize, safeSize / 2);
-    ctx.stroke();
-
-    // 竖中线（红）
-    ctx.beginPath();
-    ctx.moveTo(x + safeSize / 2, 0);
-    ctx.lineTo(x + safeSize / 2, safeSize);
-    ctx.stroke();
-
-    // 对角线（淡蓝虚线）
-    ctx.strokeStyle = '#3498db';
-    ctx.lineWidth = 0.6;
-    ctx.setLineDash([4, 3]);
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x + safeSize, safeSize);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x + safeSize, 0);
-    ctx.lineTo(x, safeSize);
-    ctx.stroke();
+    ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 0.8; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x, safeSize / 2); ctx.lineTo(x + safeSize, safeSize / 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + safeSize / 2, 0); ctx.lineTo(x + safeSize / 2, safeSize); ctx.stroke();
+    ctx.strokeStyle = '#3498db'; ctx.lineWidth = 0.6; ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + safeSize, safeSize); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + safeSize, 0); ctx.lineTo(x, safeSize); ctx.stroke();
     ctx.setLineDash([]);
   }
 }
 
 function clearCanvas() {
+  console.log('[clearCanvas] called from:', new Error().stack.split('\n')[2]);
   drawGrid();
   const ctx = document.getElementById('drawCanvas').getContext('2d');
   ctx.strokeStyle = '#1A1A2E';
-  ctx.lineWidth   = 6;
-  ctx.lineCap     = 'round';
-  ctx.lineJoin    = 'round';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
 }
 
-function saveAndNext() {
-  if (isSaving) return;
-  saveImage().then(() => nextWord());
-}
-
-function nextWord() {
-  if (currentIdx < words.length - 1) {
-    showWord(currentIdx + 1);
-  } else {
-    // 已是最后一个，显示完成按钮
-    document.getElementById('finish_hint').style.display = 'block';
-    document.getElementById('next_btn').style.display = 'none';
-    document.getElementById('progress_text').textContent = '第 ' + words.length + '/' + words.length + ' 字';
-  }
-}
-
-// ── Canvas 绘制 ───────────────────────────────────────────
+// ── Canvas ─────────────────────────────────────────────────
 
 const canvas = document.getElementById('drawCanvas');
-let drawing  = false;
-let lastX=0, lastY=0;
-let isSaving  = false;
+let drawing = false, lastX=0, lastY=0;
 
-function getCtx() {
-  return document.getElementById('drawCanvas').getContext('2d');
+function getCtx() { return canvas.getContext('2d'); }
+
+function offset(e) {
+  const r = canvas.getBoundingClientRect();
+  return [e.clientX - r.left, e.clientY - r.top];
 }
-
-function initCanvas() {
-  clearCanvas();
+function touchOffset(t) {
+  const r = canvas.getBoundingClientRect();
+  return [t.clientX - r.left, t.clientY - r.top];
+}
+function draw(e) {
+  const [x,y] = offset(e);
   const ctx = getCtx();
-  ctx.strokeStyle = '#1A1A2E';
-  ctx.lineWidth   = 6;
-  ctx.lineCap     = 'round';
-  ctx.lineJoin    = 'round';
+  ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
+  lastX=x; lastY=y;
 }
 
 canvas.addEventListener('mousedown', e => { drawing=true; [lastX,lastY]=offset(e); });
@@ -311,91 +350,69 @@ canvas.addEventListener('touchstart',e=>{ e.preventDefault(); drawing=true; cons
 canvas.addEventListener('touchmove', e=>{ e.preventDefault(); if(!drawing)return; draw(e.touches[0]); },{passive:false});
 canvas.addEventListener('touchend',  ()=>{ drawing=false; });
 
-function offset(e) {
-  const c = document.getElementById('drawCanvas');
-  const r = c.getBoundingClientRect();
-  return [e.clientX - r.left, e.clientY - r.top];
-}
-function touchOffset(t) {
-  const c = document.getElementById('drawCanvas');
-  const r = c.getBoundingClientRect();
-  return [t.clientX - r.left, t.clientY - r.top];
-}
-function draw(e) {
-  const [x,y] = offset(e);
-  const ctx = getCtx();
-  ctx.beginPath();
-  ctx.moveTo(lastX, lastY);
-  ctx.lineTo(x, y);
-  ctx.stroke();
-  lastX=x; lastY=y;
-}
-
 async function saveImage() {
-  if (isSaving) return;
-  isSaving = true;
   const canvas2 = document.getElementById('drawCanvas');
   const dataURL = canvas2.toDataURL('image/png');
   const filename = sessionKey + '_' + currentIdx + '.png';
-
   const blob = await (await fetch(dataURL)).blob();
   const form = new FormData();
   form.append('file', blob, filename);
-
-  let imgPath = '';
   try {
     const up = await fetch(API + '/upload', { method:'POST', body:form });
     const ret = await up.json();
-    imgPath = ret.url || '';
-  } catch(e) { console.error(e); }
-
-  if (imgPath) {
-    try {
-      await fetch(API + '/sessions/' + sessionId, {
+    console.log('[saveImage] upload ret:', ret);
+    const imgPath = ret.url || '';
+    if (imgPath && sessionId) {
+      const putRes = await fetch(API + '/sessions/' + sessionId, {
         method:'PUT',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ image_url: imgPath, char: words[currentIdx].char })
       });
-      uploaded[currentIdx] = true;
-    } catch(e) { console.error(e); }
-  }
-  isSaving = false;
+      const putData = await putRes.json();
+      console.log('[saveImage] put ret:', putData);
+      if (!putData.ok) {
+        console.error('[saveImage] failed to update image_url for char', words[currentIdx].char);
+      } else {
+        uploaded[currentIdx] = true;
+      }
+    } else {
+      console.warn('[saveImage] imgPath or sessionId missing, skipping update');
+    }
+  } catch(e) { console.error('[saveImage] error:', e); }
 }
 
 async function submitSession() {
-  const missing = uploaded.some(u => !u);
-  if (missing) {
-    alert('⚠️ 还有字没完成书写，请确保每个字都写过再提交');
-    return;
-  }
-  try {
-    await fetch(API + '/sessions/' + sessionId + '/submit', {
+  if (!sessionId) {
+    // 自由练习，创建 session
+    const res = await fetch(API + '/sessions', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ char_count: words.length })
-    });
-    showStep('done');
-  } catch(e) {
-    alert('提交失败: ' + e);
+      body: JSON.stringify({ mode: 'dictation', unit_ids: [...selectedUnits], child_id: 1, words: words })
+    }).then(r=>r.json());
+    sessionId = res.session_id;
   }
+  const missing = uploaded.some(u => !u);
+  if (missing) { alert('还有字没写完，请确保每个字都写过'); return; }
+  try {
+    if (sessionId) {
+      await fetch(API + '/sessions/' + sessionId + '/submit', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ char_count: words.length })
+      });
+    }
+    if (taskId) {
+      await fetch(API + '/daily-tasks/' + taskId + '/complete', { method:'POST' });
+    }
+    showStep('done');
+  } catch(e) { alert('提交失败: ' + e); }
 }
 
-// ── 初始化 ───────────────────────────────────────────────
-
-loadUnits().then(()=>{
-  // 预加载全部字用于统计
-  fetch(API + '/words').then(r=>r.json()).then(data=>{
-    words = data;
-    updateSelectInfo();
-  });
-});
-// 不在这里 initCanvas，等 showWord 时 step 已显示，clientWidth 才有效
-
-// 禁止右键/复制
 document.addEventListener('contextmenu', e=>e.preventDefault());
+// 去掉 resize 监听，避免滚动页面时触发 clearCanvas 清掉字迹
+// window.addEventListener('resize', () => { if (words.length > 0) clearCanvas(); });
 
-// 窗口大小变化时重绘
-window.addEventListener('resize', () => { if (words.length > 0) clearCanvas(); });
+init();
 </script>
 </body>
 </html>

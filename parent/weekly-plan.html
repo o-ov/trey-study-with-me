@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>本周计划</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .section-title { font-weight: 700; font-size: 15px; margin-bottom: 12px; color: var(--text); display: flex; align-items: center; gap: 6px; }
+    .hint { font-size: 12px; color: var(--sub); margin-bottom: 12px; }
+    .unit-list { display: flex; flex-direction: column; gap: 12px; }
+    .unit-card {
+      border: 2px solid #eee; border-radius: 14px; padding: 14px 16px;
+      background: #fff; transition: border-color 0.15s;
+    }
+    .unit-card.has-selection { border-color: var(--primary); background: #F8FAFF; }
+    .unit-name { font-weight: 700; font-size: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .char-count { font-size: 12px; color: var(--sub); font-weight: 500; }
+    .unit-card.has-selection .char-count { color: var(--primary); }
+    .char-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .char-tag {
+      font-size: 13px; padding: 4px 10px; border-radius: 8px;
+      background: #f2f2f2; color: var(--text); font-weight: 500;
+      cursor: pointer; transition: all 0.1s; user-select: none;
+    }
+    .char-tag:hover { background: #e0e0e0; }
+    .char-tag.selected { background: var(--primary); color: #fff; }
+    .recite-item {
+      display: flex; align-items: center; gap: 8px; padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .recite-item:last-child { border-bottom: none; }
+    .recite-item input { width: 70px; border: 1px solid #ddd; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+    .recite-item textarea {
+      flex: 1; border: 1px solid #ddd; border-radius: 10px; padding: 8px;
+      font-size: 14px; resize: none; height: 56px; font-family: inherit;
+    }
+    .recite-item .del-btn {
+      background: var(--error); color: #fff; border: none; border-radius: 8px;
+      width: 28px; height: 28px; font-size: 16px; cursor: pointer; flex-shrink: 0;
+    }
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 0; border-bottom: 1px solid #f0f0f0;
+    }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle { width: 44px; height: 24px; border-radius: 12px; background: #ddd; position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+    .toggle.on { background: var(--success); }
+    .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left 0.2s; }
+    .toggle.on::after { left: 22px; }
+    .status-bar {
+      text-align: center; padding: 10px; border-radius: 10px; font-size: 14px;
+      font-weight: 600; margin-bottom: 12px; display: none;
+    }
+    .status-bar.success { background: #F6FFED; color: var(--success); display: block; }
+    .status-bar.error { background: #FFF2F0; color: var(--error); display: block; }
+    .status-bar.info { background: #E8F4FF; color: var(--primary); display: block; }
+    .confirm-btn { width: 100%; padding: 14px; font-size: 16px; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <button class="back-btn" onclick="history.back()">←</button>
+  <span>📅 本周计划</span>
+</div>
+
+<div id="status-bar" class="status-bar"></div>
+
+<!-- 听写 · 课文列表 -->
+<div class="card">
+  <div class="section-title">📝 听写 · 点击字词选择</div>
+  <div class="hint">直接点击要听写的字词，默认全部不选</div>
+  <div class="unit-list" id="unit-list">加载中...</div>
+</div>
+
+<div class="card" style="margin-top:12px">
+  <div class="section-title">🎤 背诵篇目</div>
+  <div class="hint">每天全量复习，不需要分配</div>
+  <div id="recite-list"></div>
+  <button class="btn" onclick="addRecite()" style="width:100%;margin-top:8px;background:#f5f5f5;color:var(--text);font-size:14px">
+    + 添加背诵篇目
+  </button>
+</div>
+
+<div class="card" style="margin-top:12px">
+  <div class="section-title">📕 错题本</div>
+  <div class="toggle-row">
+    <span>每天复习全部错题</span>
+    <div class="toggle on" id="toggle-wrong" onclick="toggleWrong()"></div>
+  </div>
+</div>
+
+<!-- 确认按钮 -->
+<div style="position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;padding:12px 16px;background:#fff;border-top:1px solid #eee">
+  <button class="btn btn-success confirm-btn" id="btn-confirm" onclick="doConfirm()">
+    ✅ 保存并应用
+  </button>
+</div>
+<div style="height:80px"></div>
+
+<script>
+const API = 'http://' + location.hostname + ':8080/api';
+let planId = null;
+let units = [];           // 所有课文单元
+let selectedChars = {};  // unit_id -> Set of selected chars
+let selectedRecites = [];
+let includeWrongbook = true;
+let unitCharsCache = {}; // unit_id -> chars list
+
+async function init() {
+  const res = await fetch(API + '/units');
+  const data = await res.json();
+  units = data.units;
+
+  const planRes = await fetch(API + '/weekly-plan/current');
+  const planData = await planRes.json();
+  if (planData.has_plan) {
+    planId = planData.id;
+    await loadExistingPlan();
+  } else {
+    const now = new Date();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - now.getDay() + 1);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const fmt = d => d.toISOString().slice(0,10);
+    const cr = await fetch(API + '/weekly-plan', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({week_start: fmt(monday), week_end: fmt(sunday)})
+    });
+    const cd = await cr.json();
+    planId = cd.plan_id;
+  }
+  renderUnitList();
+  updateSummary();
+}
+
+async function loadExistingPlan() {
+  const res = await fetch(API + '/weekly-plan/' + planId + '/items');
+  const data = await res.json();
+  for (const item of data.items || []) {
+    if (item.task_type === 'dictation' && item.unit_id) {
+      const chars = item.chars || [];
+      if (chars.length > 0) {
+        selectedChars[item.unit_id] = new Set(chars.map(c => c.char || c));
+      }
+    } else if (item.task_type === 'wrongbook') {
+      includeWrongbook = true;
+      document.getElementById('toggle-wrong').classList.add('on');
+    }
+    // 背诵项由家长手动添加，不预加载
+  }
+  renderRecites();
+}
+
+async function renderUnitList() {
+  const el = document.getElementById('unit-list');
+  // 并行加载所有课文的字词
+  await Promise.all(units.map(async u => {
+    if (!unitCharsCache[u.unit_id]) {
+      try {
+        const r = await fetch(API + '/units/' + u.unit_id + '/chars');
+        const d = await r.json();
+        unitCharsCache[u.unit_id] = d.chars || [];
+      } catch(e) {
+        unitCharsCache[u.unit_id] = [];
+      }
+    }
+  }));
+  // 串行渲染（不影响速度，因为数据已全部加载完）
+  const html = [];
+  for (const u of units) {
+    const chars = unitCharsCache[u.unit_id] || [];
+    const sel = selectedChars[u.unit_id];
+    const hasSel = sel && sel.size > 0;
+    const cardClass = hasSel ? 'unit-card has-selection' : 'unit-card';
+    const countText = hasSel ? `已选 ${sel.size} 字` : `${chars.length} 字`;
+
+    html.push(`
+      <div class="${cardClass}" id="card-${u.unit_id}">
+        <div class="unit-name">
+          ${u.unit_name}
+          <span class="char-count">${countText}</span>
+        </div>
+        <div class="char-tags">
+          ${chars.map(c => {
+            const char = c.char || c;
+            const isSelected = sel && sel.has(char);
+            const cls = isSelected ? 'char-tag selected' : 'char-tag';
+            return `<span class="${cls}" data-unit="${u.unit_id}" data-char="${char}" onclick="toggleChar(this)">${char}</span>`;
+          }).join('')}
+        </div>
+      </div>
+    `);
+  }
+  el.innerHTML = html.join('');
+}
+
+function toggleChar(el) {
+  const unitId = el.dataset.unit;
+  const char = el.dataset.char;
+  if (!selectedChars[unitId]) selectedChars[unitId] = new Set();
+  const set = selectedChars[unitId];
+  if (set.has(char)) {
+    set.delete(char);
+    el.classList.remove('selected');
+  } else {
+    set.add(char);
+    el.classList.add('selected');
+  }
+  // 更新卡片样式和计数
+  const card = document.getElementById('card-' + unitId);
+  const total = unitCharsCache[unitId] ? unitCharsCache[unitId].length : 0;
+  const countEl = card.querySelector('.char-count');
+  if (set.size > 0) {
+    card.classList.add('has-selection');
+    countEl.textContent = `已选 ${set.size} 字`;
+  } else {
+    card.classList.remove('has-selection');
+    countEl.textContent = `${total} 字`;
+  }
+  updateSummary();
+}
+
+function addRecite() {
+  selectedRecites.push({id: Date.now(), title: '', content: ''});
+  renderRecites();
+}
+
+function removeRecite(id) {
+  selectedRecites = selectedRecites.filter(r => r.id !== id);
+  renderRecites();
+  updateSummary();
+}
+
+function updateReciteTitle(id, val) {
+  const r = selectedRecites.find(x => x.id === id);
+  if (r) r.title = val;
+}
+
+function updateReciteContent(id, val) {
+  const r = selectedRecites.find(x => x.id === id);
+  if (r) r.content = val;
+  updateSummary();
+}
+
+function renderRecites() {
+  const el = document.getElementById('recite-list');
+  el.innerHTML = selectedRecites.map(r => `
+    <div class="recite-item">
+      <input type="text" placeholder="篇名" value="${esc(r.title)}"
+        onchange="updateReciteTitle(${r.id}, this.value)">
+      <textarea placeholder="填写全文内容..."
+        onchange="updateReciteContent(${r.id}, this.value)">${esc(r.content)}</textarea>
+      <button class="del-btn" onclick="removeRecite(${r.id})">×</button>
+    </div>
+  `).join('');
+}
+
+function toggleWrong() {
+  includeWrongbook = !includeWrongbook;
+  document.getElementById('toggle-wrong').classList.toggle('on', includeWrongbook);
+  updateSummary();
+}
+
+function updateSummary() {
+  const parts = [];
+  const selectedUnitList = Object.keys(selectedChars).filter(uid => selectedChars[uid] && selectedChars[uid].size > 0);
+  const totalSelectedChars = selectedUnitList.reduce((sum, uid) => sum + selectedChars[uid].size, 0);
+  if (selectedUnitList.length) {
+    const firstUnit = units.find(u => u.unit_id == selectedUnitList[0]);
+    parts.push(`📝 听写：${selectedUnitList.length}课 / ${totalSelectedChars}字`);
+  }
+  if (selectedRecites.filter(r=>r.content).length) parts.push(`🎤 背诵：${selectedRecites.filter(r=>r.content).map(r=>r.title||'未命名').join('、')}`);
+  if (includeWrongbook) parts.push('📕 错题：全部');
+  const summaryEl = document.getElementById('summary-text');
+  if (!summaryEl) return;
+  summaryEl.innerHTML = parts.length
+    ? parts.map(p => `<div style="padding:2px 0">${p}</div>`).join('')
+    : '<span style="color:#999">请选择任务</span>';
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('status-bar');
+  el.textContent = msg;
+  el.className = 'status-bar ' + type;
+}
+
+async function doConfirm() {
+  const btn = document.getElementById('btn-confirm');
+  btn.disabled = true; btn.textContent = '保存中...';
+
+  try {
+    // 先删除旧的 dictation 项，重新写入
+    const itemsRes = await fetch(API + '/weekly-plan/' + planId + '/items');
+    const existing = (await itemsRes.json()).items || [];
+    const dictItems = existing.filter(e => e.task_type === 'dictation');
+    for (const item of dictItems) {
+      await fetch(API + '/weekly-plan/' + planId + '/items/' + item.id, { method: 'DELETE' });
+    }
+
+    // 写入新的听写选择
+    for (const [uid, charSet] of Object.entries(selectedChars)) {
+      if (charSet.size === 0) continue;
+      const unit = units.find(u => u.unit_id == uid);
+      const chars = Array.from(charSet).map(c => ({char: c, word: c}));
+      await fetch(API + '/weekly-plan/' + planId + '/items', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          task_type: 'dictation',
+          unit_id: uid,
+          unit_name: unit ? unit.unit_name : uid,
+          chars: chars,
+          total_chars: chars.length
+        })
+      });
+    }
+
+    // 同步背诵
+    const existingRecites = existing.filter(e => e.task_type === 'recite');
+    for (const r of selectedRecites.filter(x=>x.content)) {
+      if (!existingRecites.some(e => e.content === r.content)) {
+        await fetch(API + '/weekly-plan/' + planId + '/items', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({task_type:'recite', unit_name: r.title, content: r.content, total_chars: 0})
+        });
+      }
+    }
+
+    // 同步错题
+    const hasWrong = existing.some(e => e.task_type === 'wrongbook');
+    if (includeWrongbook && !hasWrong) {
+      await fetch(API + '/weekly-plan/' + planId + '/items', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({task_type:'wrongbook', total_chars: 0})
+      });
+    } else if (!includeWrongbook && hasWrong) {
+      // 去掉错题
+      const wrongItem = existing.find(e => e.task_type === 'wrongbook');
+      if (wrongItem) {
+        await fetch(API + '/weekly-plan/' + planId + '/items/' + wrongItem.id, { method: 'DELETE' });
+      }
+    }
+
+    // 重新均分写入 daily_task
+    const confirmRes = await fetch(API + '/weekly-plan/' + planId + '/confirm', {method:'POST'});
+    const result = await confirmRes.json();
+    if (result.error) throw new Error(result.error);
+
+    btn.textContent = '✅ 已保存';
+    btn.style.background = 'var(--success)';
+    showStatus('计划已更新，孩子明天看到新课表。', 'success');
+  } catch (e) {
+    btn.disabled = false; btn.textContent = '✅ 保存并应用';
+    showStatus('保存失败：' + e.message, 'error');
+  }
+}
+
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>

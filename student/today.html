@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>今日任务</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background: var(--bg); }
+    .task-card {
+      background: #fff; border-radius: 20px;
+      padding: 22px 20px; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 16px;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .task-card:active { transform: scale(0.98); }
+    .task-card.done { opacity: 0.7; }
+    .task-icon { font-size: 40px; flex-shrink: 0; }
+    .task-body { flex: 1; }
+    .task-name { font-weight: 700; font-size: 17px; color: var(--text); margin-bottom: 4px; }
+    .task-sub { font-size: 13px; color: var(--sub); }
+    .task-badge {
+      padding: 4px 12px; border-radius: 99px;
+      font-size: 12px; font-weight: 600; flex-shrink: 0;
+    }
+    .task-badge.active { background: #FFF2F0; color: #D46B08; }
+    .task-badge.done { background: #F6FFED; color: var(--success); }
+    .arrow { font-size: 20px; color: #ccc; flex-shrink: 0; }
+    .done .arrow { display: none; }
+    .date-banner {
+      text-align: center; padding: 16px 0 10px;
+      font-size: 13px; color: var(--sub); font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <a href="index.html" class="back-btn">← 返回</a>
+  <span>📅 今日任务</span>
+</div>
+
+<style>
+.back-btn {
+  color: #fff;
+  text-decoration: none;
+  font-size: 15px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(255,255,255,20%);
+}
+</style>
+
+<div id="content">
+  <div class="date-banner" id="date-banner"></div>
+  <div id="task-list"></div>
+</div>
+
+<div id="loading" style="text-align:center;padding:80px 0;color:var(--sub);font-size:15px">加载中...</div>
+<div id="empty" style="display:none;text-align:center;padding:80px 0">
+  <div style="font-size:56px;margin-bottom:16px">📋</div>
+  <div style="font-size:17px;font-weight:700;margin-bottom:8px">今日暂无任务</div>
+  <div style="font-size:14px;color:var(--sub)">家长设置后即可开始</div>
+</div>
+
+<script>
+const API = 'http://' + location.hostname + ':8080/api';
+
+async function load() {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('content').style.display = 'none';
+  try {
+    const res = await fetch(API + '/daily-tasks/today?child_id=1');
+    const data = await res.json();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+
+    // 日期
+    const d = new Date();
+    document.getElementById('date-banner').textContent =
+      d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
+
+    if (!data.tasks || data.tasks.length === 0) {
+      document.getElementById('content').style.display = 'none';
+      document.getElementById('empty').style.display = 'block';
+      return;
+    }
+
+    render(data.tasks);
+  } catch (e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('empty').style.display = 'block';
+  }
+}
+
+function render(tasks) {
+  const groups = {};
+  for (const t of tasks) {
+    if (!groups[t.task_type]) groups[t.task_type] = [];
+    groups[t.task_type].push(t);
+  }
+
+  const cards = [];
+
+  // 听写
+  if (groups.dictation) {
+    const allDone = groups.dictation.every(t => t.status === 'completed');
+    const totalWords = groups.dictation.reduce((sum, t) => sum + (t.words ? t.words.length : 0), 0);
+    const task = groups.dictation[0]; // 取第一个用于跳转
+    cards.push({
+      icon: '📝', name: '听写练习',
+      sub: allDone ? '已完成' : (totalWords + '个字等着你'),
+      done: allDone, type: 'dictation', taskId: task.id
+    });
+  }
+
+  // 背诵
+  if (groups.recite) {
+    const allDone = groups.recite.every(t => t.status === 'completed');
+    const content = groups.recite[0]?.content || '';
+    const short = content.length > 20 ? content.slice(0, 20) + '…' : content;
+    cards.push({
+      icon: '🎤', name: '背诵',
+      sub: allDone ? '已完成' : (short || '点击开始'),
+      done: allDone, type: 'recite', taskId: groups.recite[0]?.id
+    });
+  }
+
+  // 错题（按组算，不是按字算）
+  if (groups.wrongbook && groups.wrongbook.length > 0) {
+    const totalWrongTasks = groups.wrongbook.length;
+    const doneWrongTasks = groups.wrongbook.filter(t => t.status === 'completed').length;
+    const allDone = doneWrongTasks === totalWrongTasks;
+    cards.push({
+      icon: '📕', name: '错题复习',
+      sub: allDone ? '已完成' : (totalWrongTasks + '道题待巩固'),
+      done: allDone, type: 'wrongbook', taskId: null
+    });
+  }
+
+  const list = document.getElementById('task-list');
+  list.innerHTML = cards.map(c => `
+    <div class="task-card ${c.done ? 'done' : ''}" onclick="go('${c.type}', ${c.taskId})">
+      <div class="task-icon">${c.icon}</div>
+      <div class="task-body">
+        <div class="task-name">${c.name}</div>
+        <div class="task-sub">${c.sub}</div>
+      </div>
+      <span class="task-badge ${c.done ? 'done' : 'active'}">${c.done ? '已完成' : '开始'}</span>
+      <div class="arrow">›</div>
+    </div>
+  `).join('');
+}
+
+function go(type, taskId) {
+  if (type === 'dictation') {
+    location.href = 'dictation.html?task_id=' + taskId;
+  } else if (type === 'recite') {
+    location.href = 'recite.html?task_id=' + taskId;
+  } else if (type === 'wrongbook') {
+    location.href = 'review.html';
+  }
+}
+
+load();
+</script>
+</body>
+</html>

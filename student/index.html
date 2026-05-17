@@ -12,17 +12,27 @@
     <div id="level_badge" style="font-size:14px;color:var(--sub);margin-top:4px">Lv 1 · 识字小童</div>
   </header>
 
-  <div class="card" id="review_alert" style="display:none;background:#FFF7E6;border:1px solid #FFD591">
-    <div style="font-size:15px">📕 今日待复习：<strong id="review_count">0</strong> 个错字</div>
-    <button class="btn btn-outline" style="margin-top:8px;width:100%" onclick="location.href='review.html'">去复习</button>
-  </div>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
-    <div class="card" style="text-align:center;cursor:pointer" onclick="location.href='dictation.html?mode=dictation'">
-      <div style="font-size:40px">📝</div>
-      <div style="font-weight:700;margin-top:6px">听写</div>
-      <div style="font-size:12px;color:var(--sub);margin-top:4px">听发音写汉字</div>
+<div id="today_banner" class="card" style="display:none;background:linear-gradient(135deg,#4A90D9,#6BB5FF);color:#fff;cursor:pointer" onclick="location.href='today.html'">
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-weight:700;font-size:15px">📅 今日任务</div>
+      <div id="today_summary" style="font-size:13px;opacity:0.9;margin-top:4px">-</div>
     </div>
+    <div style="font-size:24px">→</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+  <div class="card" style="text-align:center;cursor:pointer" onclick="location.href='today.html'">
+    <div style="font-size:40px">📅</div>
+    <div style="font-weight:700;margin-top:6px">今日任务</div>
+    <div style="font-size:12px;color:var(--sub);margin-top:4px">查看每日任务</div>
+  </div>
+  <div class="card" style="text-align:center;cursor:pointer" onclick="location.href='dictation.html?mode=dictation'">
+    <div style="font-size:40px">📝</div>
+    <div style="font-weight:700;margin-top:6px">语文听写</div>
+    <div style="font-size:12px;color:var(--sub);margin-top:4px">听发音写汉字</div>
+  </div>
     <div class="card" style="text-align:center;cursor:pointer" onclick="location.href='dictation.html?mode=pinyin'">
       <div style="font-size:40px">🔤</div>
       <div style="font-weight:700;margin-top:6px">看拼音写</div>
@@ -70,30 +80,15 @@
     </div>
   </div>
 
-  <div class="spacer"></div>
-  <nav class="tab-bar">
-    <div class="tab-item active">
-      <span class="tab-icon">🏠</span><span>首页</span>
-    </div>
-    <div class="tab-item" onclick="location.href='dictation.html?mode=dictation'">
-      <span class="tab-icon">📝</span><span>听写</span>
-    </div>
-    <div class="tab-item" onclick="location.href='review.html'">
-      <span class="tab-icon">📕</span><span>错题</span>
-    </div>
-    <div class="tab-item" onclick="location.href='profile.html'">
-      <span class="tab-icon">🎮</span><span>我的</span>
-    </div>
-  </nav>
-
 <script>
 const API = 'http://' + location.hostname + ':8080/api';
 
 async function load() {
   try {
-    const [prof, wb] = await Promise.all([
+    const [prof, wb, todayRes] = await Promise.all([
       fetch(API + '/profile').then(r=>r.json()),
-      fetch(API + '/wrongbook').then(r=>r.json())
+      fetch(API + '/wrongbook').then(r=>r.json()),
+      fetch(API + '/daily-tasks/today').then(r=>r.json()).catch(()=>null)
     ]);
     document.getElementById('level_badge').textContent = 'Lv ' + prof.level + ' · ' + prof.level_name;
     document.getElementById('pts_display').textContent = '⭐ ' + prof.points + ' 分';
@@ -107,12 +102,23 @@ async function load() {
     document.getElementById('progress_fill').style.width = pct + '%';
     document.getElementById('progress_text').textContent = curSess + ' / ' + nextSess + ' 练习';
 
-    // 错题提示
-    const unreviewed = wb.unreviewed || 0;
-    if (unreviewed > 0) {
-      document.getElementById('review_count').textContent = unreviewed;
-      document.getElementById('review_alert').style.display = 'block';
+    // 今日任务 banner：按类型分组计数
+    if (todayRes && todayRes.tasks && todayRes.tasks.length > 0) {
+      const tasks = todayRes.tasks;
+      const groups = {};
+      for (const t of tasks) {
+        if (!groups[t.task_type]) groups[t.task_type] = { total: 0, done: 0 };
+        groups[t.task_type].total++;
+        if (t.status === 'completed') groups[t.task_type].done++;
+      }
+      const totalTypes = Object.keys(groups).length;
+      const doneTypes = Object.values(groups).filter(g => g.done === g.total).length;
+      const banner = document.getElementById('today_banner');
+      const summary = document.getElementById('today_summary');
+      banner.style.display = 'block';
+      summary.textContent = doneTypes >= totalTypes ? '✅ 全部完成' : `进行中 ${doneTypes}/${totalTypes}`;
     }
+
     document.getElementById('wrong_count').textContent = wb.wrongChars ? wb.wrongChars.length : 0;
   } catch(e) {
     console.error(e);

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>背诵</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .content-card {
+      background: #fff; border-radius: 20px;
+      padding: 24px 20px; margin: 12px 16px;
+      font-size: 20px; line-height: 2; color: var(--text);
+      letter-spacing: 0.5px;
+    }
+    .record-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 16px; border-radius: 16px;
+      border: none; font-size: 16px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .record-btn.idle { background: var(--primary); color: #fff; }
+    .record-btn.recording { background: #FF3B30; color: #fff; animation: pulse 1s infinite; }
+    .record-btn.processing { background: #ccc; color: #fff; }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .result-card {
+      background: #fff; border-radius: 20px;
+      padding: 20px; margin: 12px 16px;
+    }
+    .result-title { font-weight: 700; font-size: 16px; margin-bottom: 12px; }
+    .diff-line { font-size: 18px; line-height: 2; white-space: pre-wrap; word-break: break-all; }
+    .diff-correct { color: #52C41A; font-weight: 600; }
+    .diff-wrong { color: #FF3B30; background: #FFF2F0; text-decoration: underline; font-weight: 600; }
+    .diff-missing { color: #999; font-style: italic; }
+    .score-badge {
+      display: inline-block; padding: 6px 20px; border-radius: 99px;
+      font-size: 24px; font-weight: 800;
+    }
+    .score-good { background: #F6FFED; color: #52C41A; }
+    .score-ok { background: #FFF7E6; color: #FA8C16; }
+    .score-bad { background: #FFF2F0; color: #FF3B30; }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <button class="back-btn" onclick="location.href='today.html'">←</button>
+  <span>🎤 背诵</span>
+</div>
+
+<div id="content-area">
+  <div class="content-card" id="text-display">加载中...</div>
+</div>
+
+<div style="padding: 0 16px 16px">
+  <button class="record-btn idle" id="record-btn" onclick="toggleRecord()">
+    <span id="btn-icon">🎙️</span>
+    <span id="btn-text">开始录音</span>
+  </button>
+</div>
+
+<div id="result-area" style="display:none">
+  <div class="result-card">
+    <div style="text-align:center;margin-bottom:16px">
+      <span class="score-badge" id="score-badge">85%</span>
+    </div>
+    <div class="result-title">朗读内容对比</div>
+    <div class="diff-line" id="diff-display"></div>
+  </div>
+  <div style="padding: 0 16px 16px">
+    <button class="record-btn idle" onclick="location.href='today.html'" style="background:#f5f5f5;color:var(--text)">
+      ✓ 返回任务页
+    </button>
+  </div>
+</div>
+
+<div id="loading-hint" style="display:none;text-align:center;padding:16px;color:var(--sub);font-size:14px">
+  正在识别录音内容...
+</div>
+
+<script>
+const API = 'http://' + location.hostname + ':8080/api';
+const taskId = new URLSearchParams(location.search).get('task_id');
+
+let targetText = '';
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+let recText = '';
+
+// ── 加载背诵内容 ─────────────────────────────────────────
+
+async function load() {
+  if (!taskId) {
+    document.getElementById('text-display').textContent = '无背诵任务';
+    return;
+  }
+  try {
+    const res = await fetch(API + '/daily-tasks/today?child_id=1');
+    const data = await res.json();
+    const task = data.tasks.find(t => t.id == taskId && t.task_type === 'recite');
+    if (task && task.content) {
+      targetText = task.content;
+      document.getElementById('text-display').textContent = targetText;
+    } else {
+      document.getElementById('text-display').textContent = '暂无背诵内容';
+    }
+  } catch(e) {
+    document.getElementById('text-display').textContent = '加载失败';
+  }
+}
+
+// ── 录音 ─────────────────────────────────────────────────
+
+async function toggleRecord() {
+  if (!isRecording) {
+    await startRecording();
+  } else {
+    await stopRecording();
+  }
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = e => {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      await uploadAndAnalyze();
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+
+    // 启动浏览器语音识别
+    finalTranscript = '';
+    const rec = initRecognizer();
+    if (rec) rec.start();
+
+    updateBtnUI('recording');
+  } catch(e) {
+    alert('无法访问麦克风，请允许权限');
+  }
+}
+
+async function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  if (recognizer && recognizer.state !== 'inactive') {
+    recognizer.stop();
+  }
+  isRecording = false;
+  updateBtnUI('processing');
+}
+
+function updateBtnUI(state) {
+  const btn = document.getElementById('record-btn');
+  const icon = document.getElementById('btn-icon');
+  const text = document.getElementById('btn-text');
+  if (state === 'recording') {
+    btn.className = 'record-btn recording';
+    icon.textContent = '⏹️';
+    text.textContent = '停止录音';
+  } else if (state === 'processing') {
+    btn.className = 'record-btn processing';
+    icon.textContent = '⏳';
+    text.textContent = '识别中...';
+    document.getElementById('loading-hint').style.display = 'block';
+  } else {
+    btn.className = 'record-btn idle';
+    icon.textContent = '🎙️';
+    text.textContent = '再次录音';
+  }
+}
+
+// ── ASR：浏览器原生语音识别（中文） ─────────────────────────
+
+let recognizer = null;
+let finalTranscript = '';
+
+function initRecognizer() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
+
+  recognizer = new SpeechRecognition();
+  recognizer.lang = 'zh-CN';
+  recognizer.continuous = true;
+  recognizer.interimResults = false;
+
+  recognizer.onresult = event => {
+    for (const r of event.results) {
+      if (r.isFinal) {
+        finalTranscript += r[0].transcript;
+      }
+    }
+  };
+
+  recognizer.onerror = event => {
+    console.error('Speech recognition error:', event.error);
+  };
+
+  recognizer.onend = () => {
+    // 录音结束
+  };
+
+  return recognizer;
+}
+
+async function uploadAndAnalyze() {
+  const blob = new Blob(audioChunks, { type: 'audio/webm' });
+
+  // 同时上传音频（备用）
+  const form = new FormData();
+  form.append('file', blob, 'recording.webm');
+  let audioUrl = '';
+  try {
+    const up = await fetch(API + '/upload', { method: 'POST', body: form });
+    const ret = await up.json();
+    audioUrl = ret.url || '';
+  } catch(e) {}
+
+  // 识别：优先用浏览器原生识别，其次尝试后端 ASR
+  let recognized = finalTranscript.trim();
+  if (!recognized) {
+    try {
+      const resp = await fetch(API + '/asr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audio_url: audioUrl })
+      });
+      const data = await resp.json();
+      recognized = data.text || '';
+    } catch(e) {}
+  }
+
+  recText = recognized;
+  showResult(recognized);
+  document.getElementById('loading-hint').style.display = 'none';
+  updateBtnUI('idle');
+}
+
+function showResult(recText) {
+  document.getElementById('result-area').style.display = 'block';
+  document.getElementById('content-area').style.display = 'none';
+  document.getElementById('loading-hint').style.display = 'none';
+
+  const { score, diff } = compareText(targetText, recText);
+
+  // 渲染分数
+  const badge = document.getElementById('score-badge');
+  badge.textContent = score + '%';
+  badge.className = 'score-badge ' + (score >= 90 ? 'score-good' : score >= 70 ? 'score-ok' : 'score-bad');
+
+  // 渲染差异
+  document.getElementById('diff-display').innerHTML = diff;
+
+  // 标记完成
+  if (score >= 60) {
+    fetch(API + '/daily-tasks/' + taskId + '/complete', { method: 'POST' });
+  }
+}
+
+// ── 文本对比 ─────────────────────────────────────────────
+
+function compareText(target, recognized) {
+  const tChars = target.replace(/\s/g, '').split('');
+  const rChars = recognized.replace(/\s/g, '').split('');
+
+  // 简单对齐算法
+  let tp = 0, rp = 0;
+  let correct = 0;
+  const diffParts = [];
+
+  while (tp < tChars.length || rp < rChars.length) {
+    if (tp >= tChars.length) {
+      diffParts.push('<span class="diff-missing">（多余：' + rChars[rp] + '）</span>');
+      rp++;
+    } else if (rp >= rChars.length) {
+      diffParts.push('<span class="diff-missing">（漏掉：' + tChars[tp] + '）</span>');
+      tp++;
+    } else if (tChars[tp] === rChars[rp]) {
+      diffParts.push('<span class="diff-correct">' + tChars[tp] + '</span>');
+      correct++;
+      tp++; rp++;
+    } else {
+      // 不匹配，检查是否是相近的
+      diffParts.push('<span class="diff-wrong">' + tChars[tp] + '</span>');
+      tp++;
+    }
+  }
+
+  const score = tChars.length > 0 ? Math.round(correct / tChars.length * 100) : 0;
+  return { score, diff: diffParts.join('') };
+}
+
+load();
+</script>
+</body>
+</html>

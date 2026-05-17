@@ -2,7 +2,7 @@
 app.py — 听写 App 后端 API（Flask · 8080）
 """
 
-import os, json, uuid, sqlite3
+import os, json, uuid, sqlite3, base64, subprocess
 from datetime import datetime, date, timedelta
 from functools import wraps
 from flask import Flask, send_from_directory, jsonify, request, send_file
@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app, origins=["http://47.243.65.57:3000", "http://47.243.65.57:3001"])
+CORS(app, origins=["http://47.243.65.57:3000", "http://47.243.65.57:3001", "http://43.160.222.242:3000", "http://43.160.222.242:3001"])
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
@@ -564,6 +564,93 @@ def get_wrongbook():
     return jsonify({"wrongChars": [dict(r) for r in rows], "unreviewed": len(unreviewed)})
 
 
+@app.route("/api/review/send-image", methods=["POST"])
+def send_review_image():
+    """接收 base64 图片，发送到飞书，再删掉文件"""
+    data = request.get_json()
+    img_data = data.get("image")   # base64 数据
+    char_count = data.get("char_count", 0)
+
+    if not img_data:
+        return jsonify({"error": "no image"}), 400
+
+    # 保存临时文件
+    fname = f"review_{datetime.now().strftime('%Y%m%d%H%M%S')}.png"
+    fpath = os.path.join(UPLOAD_DIR, fname)
+    with open(fpath, "wb") as f:
+        f.write(base64.b64decode(img_data))
+
+    try:
+        # 1. 获取 token
+        app_id     = os.environ.get("FEISHU_APP_ID", "")
+        app_secret = os.environ.get("FEISHU_APP_SECRET", "")
+        if not app_id or not app_secret:
+            return jsonify({"error": "no feishu creds"}), 500
+
+        tok_r = subprocess.run(
+            ["curl", "-s", "-X", "POST",
+             "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
+             "-H", "Content-Type: application/json",
+             "-d", json.dumps({"app_id": app_id, "app_secret": app_secret})],
+            capture_output=True, text=True)
+        token = json.loads(tok_r.stdout).get("tenant_access_token", "")
+        if not token:
+            return jsonify({"error": "token failed"}), 500
+
+        # 2. 上传图片
+        up_r = subprocess.run(
+            ["curl", "-s", "-X", "POST",
+             "https://open.feishu.cn/open-apis/im/v1/images",
+             "-H", f"Authorization: Bearer {token}",
+             "-F", "image_type=message",
+             "-F", f"image=@{fpath}"],
+            capture_output=True, text=True)
+        up_json = json.loads(up_r.stdout)
+        image_key = up_json.get("data", {}).get("image_key", "")
+        if not image_key:
+            return jsonify({"error": "upload failed", "detail": up_json}), 500
+
+        # 3. 发消息
+        chat_id = os.environ.get("FEISHU_CHAT_ID", "oc_4a384f23ae8e7f2d58662aecc05c8fdc")
+        text = f"📕 小树完成了 {char_count} 个错字复习"
+        payload = {
+            "receive_id": chat_id,
+            "msg_type": "post",
+            "content": json.dumps({
+                "zh_cn": {"title": "小树 · 错字复习", "content": [[{"tag": "text", "text": text}]]}
+            })
+        }
+        send_r = subprocess.run(
+            ["curl", "-s", "-X", "POST",
+             "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id",
+             "-H", f"Authorization: Bearer {token}",
+             "-H", "Content-Type: application/json",
+             "-d", json.dumps(payload)],
+            capture_output=True, text=True)
+        send_json = json.loads(send_r.stdout)
+
+        # 4. 再发图片
+        if image_key:
+            img_payload = {
+                "receive_id": chat_id,
+                "msg_type": "image",
+                "content": json.dumps({"image_key": image_key})
+            }
+            subprocess.run(
+                ["curl", "-s", "-X", "POST",
+                 "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id",
+                 "-H", f"Authorization: Bearer {token}",
+                 "-H", "Content-Type: application/json",
+                 "-d", json.dumps(img_payload)],
+                capture_output=True, text=True)
+
+        return jsonify({"ok": True, "msg": "sent"})
+
+    finally:
+        if os.path.exists(fpath):
+            os.remove(fpath)
+
+
 # ════════════════════════════════════════════════════════════
 #  游戏化
 # ════════════════════════════════════════════════════════════
@@ -760,7 +847,7 @@ def redeem_reward():
 
 # ─── 周计划接口 ────────────────────────────────────────────
 from weekly_planner import (
-    create_weekly_plan, add_plan_item, ai_distribute_tasks,
+    create_weekly_plan, add_plan_item, get_plan_items, simple_distribute_tasks,
     confirm_weekly_plan, get_today_tasks, get_week_summary,
     get_unit_chars, get_unit_chars_count
 )
@@ -810,9 +897,27 @@ def api_add_item(plan_id):
     unit_name = data.get("unit_name")
     content = data.get("content")
     total_chars = data.get("total_chars", 0)
-    item_id = add_plan_item(plan_id, task_type, unit_id, unit_name, content, total_chars)
+    chars = data.get("chars", [])
+    item_id = add_plan_item(plan_id, task_type, unit_id, unit_name, content, total_chars, chars)
     return jsonify({"item_id": item_id})
 
+
+@app.route("/api/weekly-plan/<int:plan_id>/items", methods=["GET"])
+def api_get_items(plan_id):
+    """获取计划的所有任务项"""
+    items = get_plan_items(plan_id)
+    return jsonify({"items": items})
+
+
+@app.route("/api/weekly-plan/<int:plan_id>/items/<int:item_id>", methods=["DELETE"])
+def api_delete_item(plan_id, item_id):
+    """删除计划任务项"""
+    db = sqlite3.connect(DB_PATH)
+    cur = db.cursor()
+    cur.execute("DELETE FROM weekly_plan_item WHERE id = ? AND weekly_plan_id = ?", (item_id, plan_id))
+    db.commit()
+    db.close()
+    return jsonify({"ok": True})
 
 @app.route("/api/weekly-plan/<int:plan_id>/preview", methods=["GET"])
 def api_plan_preview(plan_id):
@@ -824,7 +929,7 @@ def api_plan_preview(plan_id):
     db.close()
     if not row:
         return jsonify({"error": "plan not found"}), 404
-    preview = ai_distribute_tasks(plan_id, row[0], row[1])
+    preview = simple_distribute_tasks(plan_id, row[0], row[1])
     return jsonify(preview)
 
 

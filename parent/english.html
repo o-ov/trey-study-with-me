@@ -7,38 +7,79 @@
   <link rel="stylesheet" href="style.css">
   <style>
     .card { background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .section-title { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; letter-spacing: 0.05em; }
+    .section-title { font-size: 13px; color: var(--sub); margin-bottom: 12px; letter-spacing: 0.05em; }
     .word-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
     .word-chip { background: var(--bg); border-radius: 8px; padding: 8px 6px; text-align: center; font-size: 12px; }
     .word-chip .en { font-weight: 600; color: var(--text); margin-bottom: 2px; }
-    .word-chip .cn { color: var(--text-secondary); font-size: 11px; }
+    .word-chip .cn { color: var(--sub); font-size: 11px; }
     .stat-row { display: flex; gap: 12px; margin-bottom: 16px; }
     .stat-box { flex: 1; background: var(--bg); border-radius: 12px; padding: 14px; text-align: center; }
-    .stat-box .num { font-size: 28px; font-weight: 700; color: #004BFE; }
-    .stat-box .label { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+    .stat-box .num { font-size: 28px; font-weight: 700; color: var(--primary); }
+    .stat-box .label { font-size: 11px; color: var(--sub); margin-top: 2px; }
     .task-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 10px; }
     .task-item:last-child { border-bottom: none; }
-    .task-icon { width: 36px; height: 36px; background: #004BFE15; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .task-icon { width: 36px; height: 36px; background: var(--primary-bg, #004BFE15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
     .task-info { flex: 1; }
     .task-info .title { font-size: 14px; font-weight: 600; }
-    .task-info .sub { font-size: 11px; color: var(--text-secondary); }
+    .task-info .sub { font-size: 11px; color: var(--sub); }
     .task-status { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
-    .status-done { background: #E8F5E9; color: #2E7D32; }
-    .status-pending { background: #FFF3E0; color: #E65100; }
+    .status-done { background: var(--success-bg, #E8F5E9); color: var(--success); }
+    .status-pending { background: var(--warning-bg, #FFF3E0); color: var(--warning); }
     .back-btn { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--primary); font-size: 14px; text-decoration: none; font-weight: 600; }
+    .header { position: relative; display: flex; align-items: center; justify-content: center; padding: 12px 16px; }
+    .tab-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab-btn { flex: 1; padding: 10px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--card); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.15s; }
+    .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .history-week-item { display: flex; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); cursor: pointer; gap: 10px; }
+    .history-week-item:last-child { border-bottom: none; }
+    .history-week-item:hover { opacity: 0.8; }
+    .week-label { font-weight: 600; font-size: 15px; }
+    .week-meta { font-size: 12px; color: var(--sub); margin-top: 2px; }
+    .week-arrow { color: var(--sub); font-size: 18px; }
+    .detail-section { margin-bottom: 20px; }
+    .detail-section-title { font-size: 12px; color: var(--sub); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .day-log { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .day-chip { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .day-chip.done { background: var(--success-bg, #E8F5E9); color: var(--success); }
+    .day-chip.pending { background: var(--bg); color: var(--sub); }
+    .schedule-grid { display: grid; gap: 8px; }
+    .schedule-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg); border-radius: 8px; font-size: 13px; }
+    .schedule-date { font-weight: 600; color: var(--primary); min-width: 60px; }
+    .schedule-lesson { flex: 1; color: var(--text); }
+    .schedule-count { color: var(--sub); font-size: 12px; }
+    .schedule-status { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 10px; }
+    .schedule-status.done { background: var(--success-bg, #E8F5E9); color: var(--success); }
+    .schedule-status.pending { background: var(--warning-bg, #FFF3E0); color: var(--warning); }
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--sub); }
+    .irregular-list { display: flex; flex-direction: column; gap: 8px; }
+    .irregular-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--bg); border-radius: 8px; }
+    .irregular-item .from { font-weight: 600; color: var(--text); }
+    .irregular-item .arrow { color: var(--sub); }
+    .irregular-item .to { font-weight: 600; color: var(--primary); }
+    .irregular-item .meaning { color: var(--sub); font-size: 12px; margin-left: auto; }
+    .back-link { display: inline-flex; align-items: center; gap: 4px; color: var(--primary); font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 12px; }
+    .current-badge { display: inline-block; background: var(--primary); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 6px; margin-left: 6px; font-weight: 600; }
   </style>
 </head>
 <body>
   <header class="header">
-    <a href="index.html" class="back-btn">← 返回</a>
-    <h1>本周英语</h1>
+    <a href="index.html" class="back-btn" style="position:static;transform:none">← 返回</a>
+    <h1 style="font-size:17px;font-weight:700">英语学习</h1>
+    <div style="width:40px"></div>
   </header>
-  <main class="main">
+
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-current" onclick="showTab('current')">本周配置</button>
+    <button class="tab-btn" id="tab-history" onclick="showTab('history')">历史记录</button>
+  </div>
+
+  <!-- 本周配置 -->
+  <div id="section-current">
     <!-- 统计 -->
     <div class="stat-row">
       <div class="stat-box">
         <div class="num" id="stat-words">–</div>
-        <div class="label">单词数</div>
+        <div class="label">Spelling</div>
       </div>
       <div class="stat-box">
         <div class="num" id="stat-irregular">–</div>
@@ -53,95 +94,244 @@
     <!-- 今日任务 -->
     <div class="card">
       <div class="section-title">今日任务</div>
-      <div id="today-tasks">
-        <div style="text-align:center;padding:20px;color:var(--text-secondary)">加载中...</div>
-      </div>
+      <div id="today-tasks"><div style="text-align:center;padding:20px;color:var(--sub)">加载中...</div></div>
     </div>
 
-    <!-- 本周单词 -->
+    <!-- 每日打卡进度 -->
+    <div class="card">
+      <div class="section-title">本周打卡进度</div>
+      <div id="week-progress"><div style="text-align:center;padding:12px;color:var(--sub)">–</div></div>
+    </div>
+
+    <!-- Spelling -->
     <div class="card">
       <div class="section-title">Spelling Words</div>
       <div class="word-grid" id="spelling-list"></div>
     </div>
 
-    <!-- 不规则动词 -->
+    <!-- Irregular -->
     <div class="card">
       <div class="section-title">Irregular Verbs</div>
       <div id="irregular-list"></div>
     </div>
 
-    <!-- PEP词汇 -->
+    <!-- PEP -->
     <div class="card">
-      <div class="section-title">PEP Unit 5</div>
+      <div class="section-title">PEP Words</div>
       <div class="word-grid" id="pep-list"></div>
     </div>
-  </main>
-  <script>
-    const WEEK = JSON.parse(localStorage.getItem('current_week') || '{"week_date":"2026-05-11"}');
+  </div>
 
-    async function load() {
+  <!-- 历史记录 -->
+  <div id="section-history" style="display:none">
+    <div class="card">
+      <div class="section-title">选择周</div>
+      <div id="history-list"><div style="text-align:center;padding:20px;color:var(--sub)">加载中...</div></div>
+    </div>
+  </div>
+
+  <!-- 周详情 -->
+  <div id="section-detail" style="display:none">
+    <div class="card">
+      <div class="back-link" onclick="showTab('history')">← 返回历史</div>
+      <div class="detail-section">
+        <div class="detail-section-title">打卡进度</div>
+        <div id="detail-log" class="day-log"></div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-title">每日任务</div>
+        <div id="detail-schedule" class="schedule-grid"></div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-title">Spelling</div>
+        <div class="word-grid" id="detail-spelling"></div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-title">Irregular Verbs</div>
+        <div id="detail-irregular"></div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-title">PEP Words</div>
+        <div class="word-grid" id="detail-pep"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api/english';
+    let currentWeek = null;
+
+    async function loadWeeks() {
+      const res = await fetch(API + '/weeks');
+      const data = await res.json();
+      const weeks = data.weeks || [];
+      const today = new Date();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - today.getDay() + 1);
+      const thisMonday = monday.toISOString().slice(0, 10);
+
+      if (!weeks.length) {
+        document.getElementById('history-list').innerHTML =
+          '<div class="empty-state">暂无历史记录</div>';
+        return;
+      }
+
+      document.getElementById('history-list').innerHTML = weeks.map(w => {
+        const d = new Date(w);
+        const fri = new Date(d);
+        fri.setDate(d.getDate() + 4);
+        const fmt = d2 => `${d2.getMonth()+1}/${d2.getDate()}`;
+        const label = `${fmt(d)} – ${fmt(fri)}`;
+        const isCurrent = w === thisMonday;
+        return `<div class="history-week-item" onclick="loadWeekDetail('${w}')">
+          <div style="flex:1">
+            <div class="week-label">${label}${isCurrent ? '<span class="current-badge">本周</span>' : ''}</div>
+            <div class="week-meta">共${w}</div>
+          </div>
+          <div class="week-arrow">›</div>
+        </div>`;
+      }).join('');
+    }
+
+    async function loadWeekDetail(weekDate) {
+      const res = await fetch(API + `/week-detail?week_date=${weekDate}&child_id=1`);
+      const data = await res.json();
+
+      document.getElementById('section-history').style.display = 'none';
+      document.getElementById('section-current').style.display = 'none';
+      document.getElementById('section-detail').style.display = 'block';
+
+      // 打卡进度
+      const logMap = {};
+      (data.logs || []).forEach(l => {
+        const key = l.date + '_' + l.task_type;
+        logMap[key] = l;
+      });
+
+      // 每日打卡芯片（周一~周五）
+      const monday = new Date(weekDate);
+      const days = ['一','二','三','四','五'];
+      const logHtml = days.map((d, i) => {
+        const dt = new Date(monday);
+        dt.setDate(monday.getDate() + i);
+        const dateStr = dt.toISOString().slice(0, 10);
+        const hasDone = (data.schedule || []).some(s => s.date === dateStr && s.status === 'completed');
+        return `<span class="day-chip ${hasDone ? 'done' : 'pending'}">周${d}</span>`;
+      }).join('');
+      document.getElementById('detail-log').innerHTML = logHtml;
+
+      // 每日任务
+      const schedHtml = (data.schedule || []).map(s => {
+        const td = JSON.parse(s.task_data || '{}');
+        return `<div class="schedule-row">
+          <span class="schedule-date">${s.date.slice(5)}</span>
+          <span class="schedule-lesson">${s.lesson}</span>
+          <span class="schedule-count">${td.count || 0}词</span>
+          <span class="schedule-status ${s.status === 'completed' ? 'done' : 'pending'}">${s.status === 'completed' ? '✓' : '○'}</span>
+        </div>`;
+      }).join('');
+      document.getElementById('detail-schedule').innerHTML = schedHtml || '<div style="color:var(--sub);font-size:13px">暂无任务</div>';
+
+      // 单词分类
+      const spelling = (data.words || []).filter(w => w.word_type === 'spelling');
+      const irregular = (data.words || []).filter(w => w.word_type === 'irregular');
+      const pep = (data.words || []).filter(w => w.word_type === 'pep');
+
+      document.getElementById('detail-spelling').innerHTML = spelling.map(w => `
+        <div class="word-chip"><div class="en">${w.word}</div><div class="cn">${w.meaning}</div></div>`).join('');
+      document.getElementById('detail-pep').innerHTML = pep.map(w => `
+        <div class="word-chip"><div class="en">${w.word}</div><div class="cn">${w.meaning}</div></div>`).join('');
+      document.getElementById('detail-irregular').innerHTML = irregular.map(v => `
+        <div class="irregular-item">
+          <span class="from">${v.word.split('/')[0]}</span>
+          <span class="arrow">→</span>
+          <span class="to">${v.word.split('/')[1] || v.word}</span>
+          <span class="meaning">${v.meaning}</span>
+        </div>`).join('');
+    }
+
+    async function loadCurrentWeek() {
+      const today = new Date();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - today.getDay() + 1);
+      currentWeek = monday.toISOString().slice(0, 10);
+
       const [wordsRes, schedRes] = await Promise.all([
-        fetch(`/api/english/words?week_date=${WEEK.week_date}`),
-        fetch(`/api/english/schedule?child_id=1`)
+        fetch(API + `/words?week_date=${currentWeek}`),
+        fetch(API + `/schedule?child_id=1`)
       ]);
       const wordsData = await wordsRes.json();
       const schedData = await schedRes.json();
 
-      const spelling = wordsData.words.filter(w => w.word_type === 'spelling');
-      const irregular = wordsData.words.filter(w => w.word_type === 'irregular');
-      const pep = wordsData.words.filter(w => w.word_type === 'pep');
+      const spelling = (wordsData.words || []).filter(w => w.word_type === 'spelling');
+      const irregular = (wordsData.words || []).filter(w => w.word_type === 'irregular');
+      const pep = (wordsData.words || []).filter(w => w.word_type === 'pep');
 
       document.getElementById('stat-words').textContent = spelling.length;
       document.getElementById('stat-irregular').textContent = irregular.length;
       document.getElementById('stat-pep').textContent = pep.length;
 
       // Spelling grid
-      const sp = document.getElementById('spelling-list');
-      sp.innerHTML = spelling.map(w => `
-        <div class="word-chip">
-          <div class="en">${w.word}</div>
-          <div class="cn">${w.meaning}</div>
-        </div>`).join('');
+      document.getElementById('spelling-list').innerHTML = spelling.map(w => `
+        <div class="word-chip"><div class="en">${w.word}</div><div class="cn">${w.meaning}</div></div>`).join('');
 
       // Irregular list
-      const ir = document.getElementById('irregular-list');
-      ir.innerHTML = irregular.map(v => `
-        <div class="task-item">
-          <div class="task-icon">🔁</div>
-          <div class="task-info">
-            <div class="title">${v.word}</div>
-            <div class="sub">${v.meaning}</div>
-          </div>
+      document.getElementById('irregular-list').innerHTML = irregular.map(v => `
+        <div class="irregular-item">
+          <span class="from">${v.word.split('/')[0]}</span>
+          <span class="arrow">→</span>
+          <span class="to">${v.word.split('/')[1] || v.word}</span>
+          <span class="meaning">${v.meaning}</span>
         </div>`).join('');
 
       // PEP grid
-      const pp = document.getElementById('pep-list');
-      pp.innerHTML = pep.map(w => `
-        <div class="word-chip">
-          <div class="en">${w.word}</div>
-          <div class="cn">${w.meaning}</div>
-        </div>`).join('');
+      document.getElementById('pep-list').innerHTML = pep.map(w => `
+        <div class="word-chip"><div class="en">${w.word}</div><div class="cn">${w.meaning}</div></div>`).join('');
 
       // Today tasks
-      const today = new Date().toISOString().slice(0, 10);
-      const todayTasks = (schedData.schedule || []).filter(s => s.date === today);
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayTasks = (schedData.tasks || []).filter(s => s.date === todayStr);
       const tt = document.getElementById('today-tasks');
       if (!todayTasks.length) {
-        tt.innerHTML = '<div style="color:var(--text-secondary);text-align:center;padding:12px">今日无英语任务</div>';
+        tt.innerHTML = '<div style="color:var(--sub);text-align:center;padding:12px">今日无英语任务</div>';
       } else {
+        const icons = { spelling: '✏️', irregular: '🔁', pep: '📖' };
+        const labels = { spelling: 'Spelling听写', irregular: '不规则动词', pep: 'PEP词汇' };
         tt.innerHTML = todayTasks.map(t => {
-          const icons = { spelling: '✏️', irregular: '🔁', pep: '📖' };
-          const labels = { spelling: 'Spelling听写', irregular: '不规则动词', pep: 'PEP词汇' };
+          const td = JSON.parse(t.task_data || '{}');
           return `<div class="task-item">
             <div class="task-icon">${icons[t.task_type] || '📝'}</div>
             <div class="task-info"><div class="title">${labels[t.task_type] || t.task_type}</div>
-            <div class="sub">${t.lesson} · ${JSON.parse(t.task_data|| '{}').count || 0}词</div></div>
+            <div class="sub">${t.lesson} · ${td.count || 0}词</div></div>
             <div class="task-status ${t.status === 'completed' ? 'status-done' : 'status-pending'}">${t.status === 'completed' ? '已完成' : '待完成'}</div>
           </div>`;
         }).join('');
       }
+
+      // Week progress (Mon-Fri chips)
+      const monday = new Date(currentWeek);
+      const days = ['一','二','三','四','五'];
+      const progressHtml = days.map((d, i) => {
+        const dt = new Date(monday);
+        dt.setDate(monday.getDate() + i);
+        const dateStr = dt.toISOString().slice(0, 10);
+        const dayTasks = (schedData.tasks || []).filter(s => s.date === dateStr);
+        const allDone = dayTasks.length > 0 && dayTasks.every(t => t.status === 'completed');
+        return `<span class="day-chip ${allDone ? 'done' : 'pending'}">周${d}</span>`;
+      }).join('');
+      document.getElementById('week-progress').innerHTML = progressHtml;
     }
-    load();
+
+    function showTab(tab) {
+      document.getElementById('section-current').style.display = tab === 'current' ? 'block' : 'none';
+      document.getElementById('section-history').style.display = tab === 'history' ? 'block' : 'none';
+      document.getElementById('section-detail').style.display = tab === 'detail' ? 'block' : 'none';
+      document.getElementById('tab-current').classList.toggle('active', tab === 'current');
+      document.getElementById('tab-history').classList.toggle('active', tab === 'history');
+      if (tab === 'history') loadWeeks();
+    }
+
+    loadCurrentWeek();
   </script>
 </body>
 </html>

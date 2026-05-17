@@ -190,10 +190,10 @@ def simple_distribute_tasks(plan_id: int, week_start: str, week_end: str) -> dic
             unit_name = item[4]
             chars_json = item[9] if len(item) > 9 else None
             chars = json.loads(chars_json) if chars_json and chars_json.strip() else []
-            # 如果没有存储的字（兼容旧数据），从words表读全量
-            if not chars:
-                chars = get_unit_chars(unit_id)
-            dictation_details.append({"unit_id": unit_id, "unit_name": unit_name, "chars": chars})
+            # chars 字段只存选中的字，但量可能很少导致分配不均；
+            # 为保证分配质量，总是读单元全量字
+            full_chars = get_unit_chars(unit_id)
+            dictation_details.append({"unit_id": unit_id, "unit_name": unit_name, "chars": full_chars})
         elif task_type == 'recite':
             recite_details.append({"name": item[4] or "背诵", "content": item[5]})
         elif task_type == 'wrongbook':
@@ -323,7 +323,24 @@ def confirm_weekly_plan(plan_id: int) -> dict:
 # ─── 查询接口 ─────────────────────────────────────────────
 
 def get_today_tasks(child_id: int = 1) -> list:
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now()
+    today_str = today.strftime("%Y-%m-%d")
+
+    # 周日且无今日任务时，预览下周一的计划（提前热身）
+    is_sunday = today.weekday() == 6
+    target_date = today_str
+    if is_sunday:
+        # 查周日有没有任务
+        db = get_db()
+        cur = db.cursor()
+        cur.execute("SELECT COUNT(*) FROM daily_task WHERE child_id=? AND date=?", (child_id, today_str))
+        count = cur.fetchone()[0]
+        db.close()
+        if count == 0:
+            # 下周一
+            next_monday = today + timedelta(days=1)
+            target_date = next_monday.strftime("%Y-%m-%d")
+
     db = get_db()
     cur = db.cursor()
     cur.execute("""
@@ -335,7 +352,7 @@ def get_today_tasks(child_id: int = 1) -> list:
             WHEN 'recite' THEN 2
             WHEN 'wrongbook' THEN 3
             ELSE 4 END, id
-    """, (child_id, today))
+    """, (child_id, target_date))
     rows = cur.fetchall()
     db.close()
 

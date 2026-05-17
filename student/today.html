@@ -32,6 +32,17 @@
       text-align: center; padding: 16px 0 10px;
       font-size: 13px; color: var(--sub); font-weight: 600;
     }
+    /* English section */
+    .section-label {
+      font-size: 13px; font-weight: 700; color: var(--sub);
+      padding: 16px 0 8px; border-top: 1px solid var(--border);
+      margin-top: 8px;
+    }
+    .lang-tag {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      padding: 2px 8px; border-radius: 6px; margin-bottom: 4px;
+    }
+    .lang-tag.en { background: #EEF2FF; color: #4F46E5; }
   </style>
 </head>
 <body>
@@ -71,8 +82,10 @@ async function load() {
   document.getElementById('loading').style.display = 'block';
   document.getElementById('content').style.display = 'none';
   try {
-    const res = await fetch(API + '/daily-tasks/today?child_id=1');
-    const data = await res.json();
+    const cnRes = await fetch(API + '/daily-tasks/today?child_id=1');
+    const cnData = await cnRes.json();
+    const enRes = await fetch(API + '/english/schedule?child_id=1&date=' + cnData.date);
+    const enData = await enRes.json();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
 
@@ -81,41 +94,46 @@ async function load() {
     document.getElementById('date-banner').textContent =
       d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
 
-    if (!data.tasks || data.tasks.length === 0) {
+    // 语文任务
+    const cnTasks = cnData.tasks || [];
+    // 英语每日任务（今天应做的）
+    const enSchedules = (enData.schedules || [])
+      .filter(s => s.date === cnData.date && s.status !== 'completed');
+
+    if (cnTasks.length === 0 && enSchedules.length === 0) {
       document.getElementById('content').style.display = 'none';
       document.getElementById('empty').style.display = 'block';
       return;
     }
 
-    render(data.tasks);
+    render(cnTasks, enSchedules);
   } catch (e) {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('empty').style.display = 'block';
   }
 }
 
-function render(tasks) {
+function render(cnTasks, enSchedules) {
   const groups = {};
-  for (const t of tasks) {
+  for (const t of cnTasks) {
     if (!groups[t.task_type]) groups[t.task_type] = [];
     groups[t.task_type].push(t);
   }
 
   const cards = [];
 
-  // 听写
+  // 语文任务
   if (groups.dictation) {
     const allDone = groups.dictation.every(t => t.status === 'completed');
     const totalWords = groups.dictation.reduce((sum, t) => sum + (t.words ? t.words.length : 0), 0);
-    const task = groups.dictation[0]; // 取第一个用于跳转
+    const task = groups.dictation[0];
     cards.push({
-      icon: '📝', name: '听写练习',
+      icon: '📝', name: '语文听写',
       sub: allDone ? '已完成' : (totalWords + '个字等着你'),
-      done: allDone, type: 'dictation', taskId: task.id
+      done: allDone, type: 'dictation', taskId: task.id, lang: 'cn'
     });
   }
 
-  // 背诵
   if (groups.recite) {
     const allDone = groups.recite.every(t => t.status === 'completed');
     const content = groups.recite[0]?.content || '';
@@ -123,11 +141,10 @@ function render(tasks) {
     cards.push({
       icon: '🎤', name: '背诵',
       sub: allDone ? '已完成' : (short || '点击开始'),
-      done: allDone, type: 'recite', taskId: groups.recite[0]?.id
+      done: allDone, type: 'recite', taskId: groups.recite[0]?.id, lang: 'cn'
     });
   }
 
-  // 错题（按组算，不是按字算）
   if (groups.wrongbook && groups.wrongbook.length > 0) {
     const totalWrongTasks = groups.wrongbook.length;
     const doneWrongTasks = groups.wrongbook.filter(t => t.status === 'completed').length;
@@ -135,15 +152,30 @@ function render(tasks) {
     cards.push({
       icon: '📕', name: '错题复习',
       sub: allDone ? '已完成' : (totalWrongTasks + '道题待巩固'),
-      done: allDone, type: 'wrongbook', taskId: null
+      done: allDone, type: 'wrongbook', taskId: null, lang: 'cn'
+    });
+  }
+
+  // 英语每日任务
+  for (const s of enSchedules) {
+    const taskData = s.task_data ? JSON.parse(s.task_data) : {};
+    const total = taskData.total || 0;
+    const taskTypeMap = { 'spelling': '拼写', 'irregular': '不规则动词', 'pep': 'PEP词汇', 'reading': '阅读' };
+    const iconMap = { 'spelling': '🔤', 'irregular': '🔄', 'pep': '📖', 'reading': '📄' };
+    cards.push({
+      icon: iconMap[s.task_type] || '📚',
+      name: '英语·' + (taskTypeMap[s.task_type] || s.task_type),
+      sub: total > 0 ? (total + '个词') : '今日英语',
+      done: false, type: 'en_' + s.task_type, taskId: s.id, lang: 'en'
     });
   }
 
   const list = document.getElementById('task-list');
   list.innerHTML = cards.map(c => `
-    <div class="task-card ${c.done ? 'done' : ''}" onclick="go('${c.type}', ${c.taskId})">
+    <div class="task-card ${c.done ? 'done' : ''}" onclick="go('${c.type}', ${c.taskId}, '${c.lang}')">
       <div class="task-icon">${c.icon}</div>
       <div class="task-body">
+        ${c.lang === 'en' ? '<span class="lang-tag en">EN</span>' : ''}
         <div class="task-name">${c.name}</div>
         <div class="task-sub">${c.sub}</div>
       </div>
@@ -153,13 +185,21 @@ function render(tasks) {
   `).join('');
 }
 
-function go(type, taskId) {
-  if (type === 'dictation') {
-    location.href = 'dictation.html?task_id=' + taskId;
-  } else if (type === 'recite') {
-    location.href = 'recite.html?task_id=' + taskId;
-  } else if (type === 'wrongbook') {
-    location.href = 'review.html';
+function go(type, taskId, lang) {
+  if (lang === 'cn') {
+    if (type === 'dictation') {
+      location.href = 'dictation.html?task_id=' + taskId;
+    } else if (type === 'recite') {
+      location.href = 'recite.html?task_id=' + taskId;
+    } else if (type === 'wrongbook') {
+      location.href = 'review.html';
+    }
+  } else if (lang === 'en') {
+    if (type === 'en_spelling' || type === 'en_irregular' || type === 'en_pep') {
+      location.href = 'english.html?task_type=' + type.replace('en_', '') + '&schedule_id=' + taskId;
+    } else if (type === 'en_reading') {
+      location.href = 'english-articles.html';
+    }
   }
 }
 

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>英文错题本</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background: var(--bg); }
+    .back-btn { color: #fff; text-decoration: none; font-size: 15px; padding: 4px 8px; border-radius: 8px; background: rgba(255,255,255,20%); }
+    .page-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #4F46E5; color: #fff; }
+    .header-right { margin-left: auto; font-size: 13px; opacity: 0.8; cursor: pointer; }
+    .stat-bar {
+      display: flex; justify-content: space-around; padding: 16px;
+      background: #fff; margin: 12px 16px; border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .stat-item { text-align: center; }
+    .stat-item .num { font-size: 28px; font-weight: 800; color: #4F46E5; }
+    .stat-item .label { font-size: 12px; color: var(--sub); margin-top: 4px; }
+    .word-list { padding: 0 16px; }
+    .word-card {
+      background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .word-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .word-en { font-size: 20px; font-weight: 700; color: #4F46E5; flex: 1; }
+    .play-btn { background: #EEF2FF; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 16px; cursor: pointer; }
+    .word-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .tag { font-size: 11px; padding: 2px 8px; border-radius: 6px; }
+    .tag-type { background: #EEF2FF; color: #4F46E5; }
+    .tag-lesson { background: #FEF3C7; color: #92400E; }
+    .tag-wrong { background: #FEE2E2; color: #DC2626; }
+    .word-meaning { font-size: 14px; color: var(--sub); margin-bottom: 8px; }
+    .word-actions { display: flex; gap: 8px; }
+    .btn-remove {
+      flex: 1; padding: 8px; border: none; border-radius: 10px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      background: #F3F4F6; color: var(--text);
+    }
+    .btn-remove.done { background: #DCFCE7; color: #16A34A; }
+    .empty-state { text-align: center; padding: 80px 0; }
+    .empty-icon { font-size: 64px; margin-bottom: 16px; }
+    .empty-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+    .empty-sub { font-size: 14px; color: var(--sub); }
+    /* Quiz mode */
+    .quiz-card {
+      background: #fff; border-radius: 20px; padding: 32px 24px;
+      margin: 16px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+    .quiz-progress { font-size: 13px; color: var(--sub); margin-bottom: 20px; }
+    .quiz-hint { font-size: 15px; color: var(--sub); margin-bottom: 16px; }
+    .quiz-en { font-size: 32px; font-weight: 800; color: #4F46E5; margin-bottom: 8px; }
+    .quiz-meaning { font-size: 14px; color: var(--sub); margin-bottom: 24px; }
+    .answer-input {
+      width: 100%; padding: 14px; border: 2px solid #E5E7EB;
+      border-radius: 12px; font-size: 18px; text-align: center;
+      box-sizing: border-box; outline: none; margin-bottom: 12px;
+    }
+    .answer-input:focus { border-color: #4F46E5; }
+    .answer-input.correct { border-color: #22C55E; background: #F0FDF4; }
+    .answer-input.wrong { border-color: #EF4444; background: #FEF2F2; }
+    .feedback { font-size: 14px; font-weight: 700; min-height: 20px; margin-bottom: 12px; }
+    .feedback.ok { color: #22C55E; }
+    .feedback.bad { color: #EF4444; }
+    .quiz-btn {
+      width: 100%; padding: 14px; border: none; border-radius: 14px;
+      font-size: 16px; font-weight: 700; cursor: pointer;
+      background: #4F46E5; color: #fff; margin-bottom: 8px;
+    }
+    /* Nav bar */
+    .nav-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #fff; border-top: 1px solid var(--border);
+      display: flex; padding: 8px 0; padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+    .nav-item { flex: 1; text-align: center; font-size: 11px; color: var(--sub); text-decoration: none; }
+    .nav-item .nav-icon { font-size: 22px; display: block; }
+    .nav-item.active { color: #4F46E5; }
+    body { padding-bottom: 72px; }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <a href="index.html" class="back-btn">← 返回</a>
+  <span style="font-weight:700">英文错题本</span>
+  <span class="header-right" onclick="toggleQuizMode()">✏️ 练习</span>
+</div>
+
+<!-- Stats -->
+<div class="stat-bar" id="stat-bar">
+  <div class="stat-item">
+    <div class="num" id="stat-total">0</div>
+    <div class="label">总题数</div>
+  </div>
+  <div class="stat-item">
+    <div class="num" id="stat-wrong">0</div>
+    <div class="label">记不住</div>
+  </div>
+</div>
+
+<!-- List mode -->
+<div id="list-view">
+  <div id="word-list" class="word-list"></div>
+  <div id="empty-state" class="empty-state" style="display:none">
+    <div class="empty-icon">📗</div>
+    <div class="empty-title">错题本是空的</div>
+    <div class="empty-sub">听写答错的词会出现在这里</div>
+  </div>
+</div>
+
+<!-- Quiz mode -->
+<div id="quiz-view" style="display:none">
+  <div class="quiz-card" id="quiz-card">
+    <div class="quiz-progress" id="quiz-progress"></div>
+    <div class="quiz-en" id="quiz-en"></div>
+    <div class="quiz-meaning" id="quiz-meaning"></div>
+    <input class="answer-input" id="quiz-input" autocomplete="off" spellcheck="false"
+           placeholder="输入英语单词" onkeydown="if(event.key==='Enter')checkQuiz()">
+    <div class="feedback" id="quiz-feedback"></div>
+    <button class="quiz-btn" id="quiz-btn" onclick="checkQuiz()">确定</button>
+  </div>
+</div>
+
+<nav class="nav-bar">
+  <a href="index.html" class="nav-item active">
+    <span class="nav-icon">🏠</span>首页
+  </a>
+  <a href="today.html" class="nav-item">
+    <span class="nav-icon">📅</span>今日
+  </a>
+  <a href="profile.html" class="nav-item">
+    <span class="nav-icon">👤</span>我的
+  </a>
+</nav>
+
+<script>
+const API = 'http://' + location.hostname + ':8080/api';
+
+let wrongItems = [];
+let quizMode = false;
+let quizIdx = 0;
+let quizCorrect = 0;
+
+async function loadWrongbook() {
+  const res = await fetch(API + '/english/wrongbook?child_id=1');
+  const data = await res.json();
+  wrongItems = data.items || [];
+
+  document.getElementById('stat-total').textContent = wrongItems.length;
+  document.getElementById('stat-wrong').textContent =
+    wrongItems.filter(i => i.wrong_count >= 3).length;
+
+  const list = document.getElementById('word-list');
+  const empty = document.getElementById('empty-state');
+
+  if (wrongItems.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  list.innerHTML = wrongItems.map(item => `
+    <div class="word-card" id="card-${item.id}">
+      <div class="word-top">
+        <div class="word-en">${item.word}</div>
+        <button class="play-btn" onclick="playWord('${item.word}')">🔊</button>
+      </div>
+      <div class="word-meta">
+        <span class="tag tag-type">${item.word_type || ''}</span>
+        <span class="tag tag-lesson">${item.lesson || ''}</span>
+        <span class="tag tag-wrong">错${item.wrong_count}次</span>
+      </div>
+      <div class="word-meaning">${item.meaning || item.pronunciation || ''}</div>
+      <div class="word-actions">
+        <button class="btn-remove" id="remove-btn-${item.id}"
+          onclick="removeWord(${item.id})">✅ 已掌握</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function playWord(word) {
+  new Audio(API + '/english/tts?text=' + encodeURIComponent(word)).play().catch(() => {});
+}
+
+async function removeWord(id) {
+  await fetch(API + '/english/wrongbook/' + id, { method: 'DELETE' });
+  const btn = document.getElementById('remove-btn-' + id);
+  btn.classList.add('done');
+  btn.textContent = '✅ 已移除';
+  btn.disabled = true;
+  setTimeout(() => loadWrongbook(), 1000);
+}
+
+// Quiz mode
+function toggleQuizMode() {
+  quizMode = !quizMode;
+  document.getElementById('list-view').style.display = quizMode ? 'none' : 'block';
+  document.getElementById('stat-bar').style.display = quizMode ? 'none' : 'flex';
+  document.getElementById('quiz-view').style.display = quizMode ? 'block' : 'none';
+  document.querySelector('.header-right').textContent = quizMode ? '📋 列表' : '✏️ 练习';
+
+  if (quizMode && wrongItems.length > 0) {
+    quizIdx = 0;
+    quizCorrect = 0;
+    // 打乱顺序
+    wrongItems.sort(() => Math.random() - 0.5);
+    showQuizWord();
+  }
+}
+
+function showQuizWord() {
+  const item = wrongItems[quizIdx];
+  document.getElementById('quiz-progress').textContent = `${quizIdx + 1} / ${wrongItems.length}`;
+  document.getElementById('quiz-en').textContent = item.word;
+  document.getElementById('quiz-meaning').textContent = item.meaning || item.pronunciation || '';
+  document.getElementById('quiz-input').value = '';
+  document.getElementById('quiz-input').className = 'answer-input';
+  document.getElementById('quiz-feedback').textContent = '';
+  document.getElementById('quiz-btn').textContent = '确定';
+  document.getElementById('quiz-input').focus();
+}
+
+function checkQuiz() {
+  const input = document.getElementById('quiz-input');
+  const userAns = input.value.trim().toLowerCase();
+  const correct = wrongItems[quizIdx].word.toLowerCase();
+  const isCorrect = userAns === correct;
+
+  if (isCorrect) {
+    input.className = 'answer-input correct';
+    document.getElementById('quiz-feedback').textContent = '✅ 正确！';
+    document.getElementById('quiz-feedback').className = 'feedback ok';
+    quizCorrect++;
+    document.getElementById('quiz-btn').textContent = wrongItems.length > 1 ? '下一题 →' : '完成';
+    document.getElementById('quiz-btn').onclick = nextQuiz;
+    // 答对了从错题本移除
+    fetch(API + '/english/wrongbook/' + wrongItems[quizIdx].id, { method: 'DELETE' });
+  } else {
+    input.className = 'answer-input wrong';
+    document.getElementById('quiz-feedback').innerHTML =
+      '❌ 正确答案：<b>' + wrongItems[quizIdx].word + '</b>';
+    document.getElementById('quiz-feedback').className = 'feedback bad';
+    document.getElementById('quiz-btn').textContent = wrongItems.length > 1 ? '下一题 →' : '完成';
+    document.getElementById('quiz-btn').onclick = nextQuiz;
+  }
+}
+
+function nextQuiz() {
+  quizIdx++;
+  if (quizIdx < wrongItems.length) {
+    showQuizWord();
+    document.getElementById('quiz-btn').onclick = checkQuiz;
+  } else {
+    // 完成
+    const pct = Math.round(quizCorrect / wrongItems.length * 100);
+    document.getElementById('quiz-card').innerHTML = `
+      <div style="font-size:72px;margin-bottom:16px">${pct >= 80 ? '🏆' : '💪'}</div>
+      <div style="font-size:40px;font-weight:800;color:#4F46E5;margin-bottom:8px">${pct}%</div>
+      <div style="font-size:15px;color:var(--sub);margin-bottom:24px">答对 ${quizCorrect} / ${wrongItems.length} 题</div>
+      <button class="quiz-btn" onclick="location.reload()">返回</button>
+    `;
+  }
+}
+
+loadWrongbook();
+</script>
+</body>
+</html>

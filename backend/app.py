@@ -854,17 +854,34 @@ from weekly_planner import (
 
 @app.route("/api/weekly-plan/current", methods=["GET"])
 def api_current_plan():
-    """获取当前周计划状态"""
+    """获取当前周计划状态
+    周日时返回下周计划（让孩子和家长提前看到）
+    """
     child_id = 1
     db = sqlite3.connect(DB_PATH)
     cur = db.cursor()
-    today = datetime.now().strftime("%Y-%m-%d")
-    cur.execute("""
-        SELECT id, week_start, week_end, status, created_at
-        FROM weekly_plan
-        WHERE child_id = ? AND week_start <= ? AND week_end >= ?
-        ORDER BY id DESC LIMIT 1
-    """, (child_id, today, today))
+    today = datetime.now()
+    today_str = today.strftime("%Y-%m-%d")
+    is_sunday = today.weekday() == 6
+
+    if is_sunday:
+        # 周日：查下周计划
+        next_monday = today + timedelta(days=1)
+        target_start = next_monday.strftime("%Y-%m-%d")
+        cur.execute("""
+            SELECT id, week_start, week_end, status, created_at
+            FROM weekly_plan
+            WHERE child_id = ? AND week_start = ? AND status = 'confirmed'
+            ORDER BY id DESC LIMIT 1
+        """, (child_id, target_start))
+    else:
+        cur.execute("""
+            SELECT id, week_start, week_end, status, created_at
+            FROM weekly_plan
+            WHERE child_id = ? AND week_start <= ? AND week_end >= ? AND status = 'confirmed'
+            ORDER BY id DESC LIMIT 1
+        """, (child_id, today_str, today_str))
+
     row = cur.fetchone()
     db.close()
     if not row:
@@ -1104,6 +1121,70 @@ def api_english_schedule():
     return jsonify({"date": target_date, "tasks": tasks})
 
 
+@app.route("/api/english/weeks", methods=["GET"])
+def api_english_weeks():
+    """返回所有有英语配置的周（按周一开始的week_date倒序）"""
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT DISTINCT week_date FROM english_words
+        UNION
+        SELECT DISTINCT substr(date, 1, 10) as wd FROM english_schedule WHERE date IS NOT NULL
+        ORDER BY week_date DESC
+    """)
+    weeks = [r[0] for r in cur.fetchall()]
+    db.close()
+    return jsonify({"weeks": weeks})
+
+
+@app.route("/api/english/week-detail", methods=["GET"])
+def api_english_week_detail():
+    """返回指定周的全部内容：单词 + 每日打卡状态"""
+    week_date = request.args.get("week_date")
+    child_id = request.args.get("child_id", 1, type=int)
+    if not week_date:
+        return jsonify({"error": "week_date required"}), 400
+
+    db = get_db()
+    cur = db.cursor()
+
+    # 单词
+    cur.execute("""
+        SELECT word, pos, meaning, word_type, lesson
+        FROM english_words WHERE week_date=?
+        ORDER BY word_type, lesson, id
+    """, (week_date,))
+    words = [dict(zip(["word","pos","meaning","word_type","lesson"], r)) for r in cur.fetchall()]
+
+    # 调度（周一到周五）
+    monday = week_date
+    friday = (datetime.strptime(week_date, "%Y-%m-%d") + timedelta(days=4)).strftime("%Y-%m-%d")
+    cur.execute("""
+        SELECT date, task_type, lesson, task_data, status
+        FROM english_schedule
+        WHERE child_id=? AND date BETWEEN ? AND ?
+        ORDER BY date, task_type
+    """, (child_id, monday, friday))
+    schedule = [dict(zip(["date","task_type","lesson","task_data","status"], r)) for r in cur.fetchall()]
+
+    # 每日打卡记录
+    cur.execute("""
+        SELECT date, task_type, score, completed_at
+        FROM english_daily_log
+        WHERE child_id=? AND date BETWEEN ? AND ?
+        ORDER BY date, task_type
+    """, (child_id, monday, friday))
+    logs = [dict(zip(["date","task_type","score","completed_at"], r)) for r in cur.fetchall()]
+
+    db.close()
+    return jsonify({
+        "week_date": week_date,
+        "words": words,
+        "schedule": schedule,
+        "logs": logs
+    })
+
+
 @app.route("/api/english/schedule", methods=["POST"])
 def api_english_schedule_post():
     """写入/更新英语每日任务"""
@@ -1180,6 +1261,106 @@ def api_english_word_practice():
 
     words = [dict(zip(["id","word","pronunciation","pos","meaning","lesson","word_type"], r)) for r in rows]
     return jsonify({"date": target_date, "task_type": task_type, "words": words})
+
+
+# ═══════════════════════════════════════════════════════════════
+# 英文错题本
+# ═══════════════════════════════════════════════════════════════
+
+@app.route("/api/english/wrongbook", methods=["GET"])
+def api_english_wrongbook():
+    """获取英文错题列表"""
+    child_id = request.args.get("child_id", 1, type=int)
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT id, word_id, word, pronunciation, meaning, word_type, lesson,
+               wrong_count, last_wrong_at, reviewed_at
+        FROM english_wrongbook
+        WHERE child_id = ?
+        ORDER BY wrong_count DESC, last_wrong_at DESC
+    """, (child_id,))
+    rows = cur.fetchall()
+    db.close()
+    items = [dict(zip(["id","word_id","word","pronunciation","meaning","word_type",
+                       "lesson","wrong_count","last_wrong_at","reviewed_at"], r)) for r in rows]
+    return jsonify({"items": items, "count": len(items)})
+
+
+@app.route("/api/english/wrongbook", methods=["POST"])
+def api_english_wrongbook_add():
+    """添加或更新错题（答错时调用）"""
+    data = request.json
+    child_id = data.get("child_id", 1)
+    word_id = data.get("word_id")
+    word = data.get("word", "")
+    pronunciation = data.get("pronunciation", "")
+    meaning = data.get("meaning", "")
+    word_type = data.get("word_type", "")
+    lesson = data.get("lesson", "")
+
+    db = get_db()
+    cur = db.cursor()
+    # 已有则累加 wrong_count
+    cur.execute("SELECT id, wrong_count FROM english_wrongbook WHERE child_id=? AND word=?", (child_id, word))
+    existing = cur.fetchone()
+    if existing:
+        cur.execute("""
+            UPDATE english_wrongbook
+            SET wrong_count = wrong_count + 1, last_wrong_at = datetime('now')
+            WHERE id = ?
+        """, (existing[0],))
+    else:
+        cur.execute("""
+            INSERT INTO english_wrongbook (child_id, word_id, word, pronunciation, meaning, word_type, lesson)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (child_id, word_id, word, pronunciation, meaning, word_type, lesson))
+    db.commit()
+    db.close()
+    return jsonify({"success": True})
+
+
+@app.route("/api/english/wrongbook/<int:item_id>", methods=["DELETE"])
+def api_english_wrongbook_remove(item_id):
+    """从错题本移除（答对时调用）"""
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("DELETE FROM english_wrongbook WHERE id = ?", (item_id,))
+    db.commit()
+    db.close()
+    return jsonify({"success": True})
+
+
+@app.route("/api/english/wrongbook/clear", methods=["POST"])
+def api_english_wrongbook_clear():
+    """清空英文错题本"""
+    child_id = request.json.get("child_id", 1) if request.json else 1
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("DELETE FROM english_wrongbook WHERE child_id = ?", (child_id,))
+    db.commit()
+    db.close()
+    return jsonify({"success": True})
+
+
+# ═══════════════════════════════════════════════════════════════
+# 英文 TTS（调用本地 TTS 服务）
+# ═══════════════════════════════════════════════════════════════
+
+@app.route("/api/english/tts", methods=["GET"])
+def api_english_tts():
+    """英文单词 TTS，调用本地 edge-tts 服务"""
+    text = request.args.get("text", "").strip()
+    if not text:
+        return jsonify({"error": "text required"}), 400
+    try:
+        tts_url = f"http://localhost:8082/tts?text={text}&lang=en"
+        resp = requests.get(tts_url, timeout=5)
+        if resp.status_code == 200:
+            return resp.content, 200, {"Content-Type": "audio/mpeg"}
+        return jsonify({"error": "TTS failed"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ═══════════════════════════════════════════════════════════════

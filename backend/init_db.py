@@ -325,6 +325,23 @@ def init():
     )
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS english_wrongbook (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        child_id INTEGER DEFAULT 1,
+        word_id INTEGER,
+        word TEXT,
+        pronunciation TEXT,
+        meaning TEXT,
+        word_type TEXT,
+        lesson TEXT,
+        wrong_count INTEGER DEFAULT 1,
+        last_wrong_at TEXT DEFAULT (date('now')),
+        reviewed_at TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+    )
+    """)
+
     # ── 插入默认孩子 ───────────────────────────────────────────
     cur.execute("INSERT OR IGNORE INTO child (id, name) VALUES (1, '小树')")
 

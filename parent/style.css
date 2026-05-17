@@ -13,6 +13,13 @@
   --shadow: 0 4px 16px rgba(74,144,217,0.15);
   --border: #eee;
   --tab-bg: #fff;
+  --tag-bg: #f2f2f2;
+  --tag-text: #1A1A2E;
+  --tag-hover: #e0e0e0;
+  --primary-bg: #004BFE15;
+  --success-bg: #E8F5E9;
+  --warning-bg: #FFF3E0;
+  --toggle-off: #ccc;
 }
 
 @media (prefers-color-scheme: dark) {

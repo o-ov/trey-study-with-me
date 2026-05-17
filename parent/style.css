@@ -29,6 +29,11 @@
     --shadow: 0 4px 16px rgba(0,0,0,0.4);
     --border: #2A2A36;
     --tab-bg: #1E1E26;
+    --tag-bg: #2A2A36;
+    --tag-text: #E8E8F0;
+    --tag-hover: #3A3A46;
+    --primary-bg: #1a2a3a;
+    --toggle-off: #555;
   }
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }

@@ -13,27 +13,27 @@
       border: 2px solid var(--border); border-radius: 14px; padding: 14px 16px;
       background: var(--card); transition: border-color 0.15s;
     }
-    .unit-card.has-selection { border-color: var(--primary); background: #F8FAFF; }
+    .unit-card.has-selection { border-color: var(--primary); background: var(--primary-bg, #F8FAFF); }
     .unit-name { font-weight: 700; font-size: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
     .char-count { font-size: 12px; color: var(--sub); font-weight: 500; }
     .unit-card.has-selection .char-count { color: var(--primary); }
     .char-tags { display: flex; flex-wrap: wrap; gap: 6px; }
     .char-tag {
       font-size: 13px; padding: 4px 10px; border-radius: 8px;
-      background: #f2f2f2; color: var(--text); font-weight: 500;
+      background: var(--tag-bg, #f2f2f2); color: var(--tag-text, var(--text)); font-weight: 500;
       cursor: pointer; transition: all 0.1s; user-select: none;
     }
-    .char-tag:hover { background: #e0e0e0; }
+    .char-tag:hover { background: var(--tag-hover, #e0e0e0); }
     .char-tag.selected { background: var(--primary); color: #fff; }
     .recite-item {
       display: flex; align-items: center; gap: 8px; padding: 10px 0;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid var(--border);
     }
     .recite-item:last-child { border-bottom: none; }
-    .recite-item input { width: 70px; border: 1px solid #ddd; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+    .recite-item input { width: 70px; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 13px; background: var(--card); color: var(--text); }
     .recite-item textarea {
-      flex: 1; border: 1px solid #ddd; border-radius: 10px; padding: 8px;
-      font-size: 14px; resize: none; height: 56px; font-family: inherit;
+      flex: 1; border: 1px solid var(--border); border-radius: 10px; padding: 8px;
+      font-size: 14px; resize: none; height: 56px; font-family: inherit; background: var(--card); color: var(--text);
     }
     .recite-item .del-btn {
       background: var(--error); color: #fff; border: none; border-radius: 8px;
@@ -41,10 +41,10 @@
     }
     .toggle-row {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 0; border-bottom: 1px solid #f0f0f0;
+      padding: 12px 0; border-bottom: 1px solid var(--border);
     }
     .toggle-row:last-child { border-bottom: none; }
-    .toggle { width: 44px; height: 24px; border-radius: 12px; background: #ddd; position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+    .toggle { width: 44px; height: 24px; border-radius: 12px; background: var(--toggle-off, #ccc); position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
     .toggle.on { background: var(--success); }
     .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--card); transition: left 0.2s; }
     .toggle.on::after { left: 22px; }

@@ -10,9 +10,10 @@ import os
 import json
 import subprocess
 import urllib.request
+import os
 from datetime import datetime
 
-PORT = 8081
+PORT = int(os.environ.get("GRADING_PORT", 8081))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
 WRONGBOOK_FILE = os.path.join(SESSIONS_DIR, "wrongbook.json")

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>待批改</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="page-header">
+  <button class="back-btn" onclick="history.back()">←</button>
+  <span>📋 待批改列表</span>
+</div>
+
+<div id="list" class="card"></div>
+<div id="empty" style="text-align:center;padding:60px;color:var(--sub);font-size:15px;display:none">
+  🎉 暂无待批改内容
+</div>
+
+<script>
+const API = 'http://' + location.hostname + ':8080/api';
+
+async function load() {
+  const sessions = await fetch(API + '/sessions?child_id=1&status=submitted').then(r=>r.json());
+  if (sessions.length === 0) {
+    document.getElementById('empty').style.display = 'block';
+    return;
+  }
+  const list = document.getElementById('list');
+  list.innerHTML = sessions.map(s => {
+    const modeMap = { dictation:'📝 听写', pinyin:'🔤 看拼音写', review:'📕 错题复习' };
+    const units = s.unit_ids ? JSON.parse(s.unit_ids).join('、') : '综合';
+    const time = s.created_at ? new Date(s.created_at).toLocaleString('zh-CN') : '';
+    return '<div class="list-item" onclick="location.href=\'grade.html?sid=' + s.id + '\'">'
+      + '<div style="flex:1">'
+      + '<div style="font-weight:600">' + (modeMap[s.mode] || s.mode) + '</div>'
+      + '<div style="font-size:12px;color:var(--sub);margin-top:4px">' + units + ' · ' + s.total_chars + '个字</div>'
+      + '<div style="font-size:11px;color:#999;margin-top:2px">' + time + '</div></div>'
+      + '<div style="color:var(--primary);font-size:20px">→</div></div>';
+  }).join('');
+}
+load();
+</script>
+</body>
+</html>

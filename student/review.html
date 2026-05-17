@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>错题复习</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .step { display: none; }
+    .step.active { display: block; }
+  </style>
+</head>
+<body>
+
+<div id="step_list" class="step active">
+  <div class="page-header">
+    <button class="back-btn" onclick="history.back()">←</button>
+    <span>错题复习</span>
+  </div>
+  <div id="wrong_list" class="card" style="margin-top:8px"></div>
+  <div id="empty_hint" style="text-align:center;color:var(--sub);padding:40px;font-size:15px;display:none">
+    🎉 太棒了！暂无待复习错字
+  </div>
+</div>
+
+<div id="step_practice" class="step">
+  <div class="page-header">
+    <span id="progress_text">第 1/N</span>
+    <div style="flex:1"></div>
+    <button onclick="playTTS()" style="background:none;border:none;font-size:28px;cursor:pointer">🔊</button>
+  </div>
+  <div class="card" style="text-align:center">
+    <div id="pinyin_show" class="pinyin-display"></div>
+    <div id="char_show" class="char-display" style="color:#999;font-size:48px">？</div>
+  </div>
+  <div class="card">
+    <canvas id="drawCanvas" style="width:100%;height:200px;display:block"></canvas>
+    <div class="toolbar">
+      <button onclick="clearCanvas()" style="background:#F5F5F5">🗑️ 重写</button>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:12px" class="card">
+    <button class="btn btn-success btn-large" onclick="submitAndNext()">✓ 下一字</button>
+  </div>
+</div>
+
+<div id="step_done" class="step">
+  <div class="done-page">
+    <div class="done-emoji">🎉</div>
+    <div class="done-title">复习完成！</div>
+    <div class="done-pts">本次获得 +8 积分</div>
+    <button class="btn btn-primary btn-large" style="margin-top:32px;max-width:260px" onclick="location.href='index.html'">
+      🏠 返回首页
+    </button>
+  </div>
+</div>
+
+<script>
+const API = 'http://' + location.hostname + ':8080/api';
+let wrongChars = [];
+let currentIdx = 0;
+let sessionId = null;
+let sessionKey = null;
+
+async function load() {
+  const wb = await fetch(API + '/wrongbook').then(r=>r.json());
+  wrongChars = (wb.wrongChars || []).filter(w => !w.reviewed);
+  if (wrongChars.length === 0) {
+    document.getElementById('empty_hint').style.display = 'block';
+    return;
+  }
+  renderList();
+  showStep('list');
+}
+
+function renderList() {
+  const el = document.getElementById('wrong_list');
+  el.innerHTML = wrongChars.map((w,i) => (
+    '<div class="wrong-item" data-idx="' + i + '">'
+    + '<div style="font-size:36px;margin-right:12px">📕</div>'
+    + '<div><div style="font-size:18px;font-weight:700">' + w.char + '</div>'
+    + '<div style="font-size:12px;color:var(--sub)">' + (w.pinyin||'') + ' · 错' + w.wrong_count + '次</div></div>'
+    + '<div style="flex:1"></div><div style="color:var(--primary)">去复习 →</div></div>'
+  )).join('');
+  el.querySelectorAll('.wrong-item').forEach(item => {
+    item.addEventListener('click', () => startReview(+item.dataset.idx));
+  });
+}
+
+function showStep(name) {
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('step_' + name).classList.add('active');
+}
+
+async function startReview(idx) {
+  currentIdx = idx;
+  const w = wrongChars[idx];
+
+  // 创建临时 session
+  const res = await fetch(API + '/sessions', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ mode:'review', unit_ids:[], child_id:1, words:[w] })
+  }).catch(()=>null);
+
+  sessionKey = res ? res.session_key : 'review_' + Date.now();
+
+  document.getElementById('progress_text').textContent = '第 ' + (idx+1) + '/' + wrongChars.length + ' 字';
+  document.getElementById('char_show').textContent = w.char || '';
+  document.getElementById('pinyin_show').textContent = w.pinyin || '';
+  clearCanvas();
+  showStep('practice');
+}
+
+async function playTTS() {
+  const w = wrongChars[currentIdx];
+  const text = w.char || '';
+  try {
+    await new Audio('http://' + location.hostname + ':8082/tts?text=' + encodeURIComponent(text)).play();
+  } catch(e) {}
+}
+
+function clearCanvas() {
+  const c = document.getElementById('drawCanvas');
+  c.width = c.offsetWidth; c.height = 200;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height);
+  ctx.strokeStyle='#1A1A2E'; ctx.lineWidth=6; ctx.lineCap='round';
+}
+
+const c = document.getElementById('drawCanvas');
+const ctx = c.getContext('2d');
+let drawing=false, lastX=0, lastY=0;
+c.addEventListener('mousedown',e=>{drawing=true;[lastX,lastY]=[e.clientX-c.getBoundingClientRect().left,e.clientY-c.getBoundingClientRect().top];});
+c.addEventListener('mousemove',e=>{if(!drawing)return;ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(e.clientX-c.getBoundingClientRect().left,e.clientY-c.getBoundingClientRect().top);ctx.stroke();[lastX,lastY]=[e.clientX-c.getBoundingClientRect().left,e.clientY-c.getBoundingClientRect().top];});
+c.addEventListener('mouseup',()=>drawing=false);
+c.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const t=e.touches[0];const r=c.getBoundingClientRect();[lastX,lastY]=[t.clientX-r.left,t.clientY-r.top];},{passive:false});
+c.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const t=e.touches[0];const r=c.getBoundingClientRect();ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(t.clientX-r.left,t.clientY-r.top);ctx.stroke();[lastX,lastY]=[t.clientX-r.left,t.clientY-r.top];},{passive:false});
+c.addEventListener('touchend',()=>drawing=false);
+
+async function submitAndNext() {
+  const w = wrongChars[currentIdx];
+  // 复习默认按正确处理（可由家长端重新批改）
+  try {
+    await fetch(API + '/points/add', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ points: 8 })
+    });
+  } catch(e) {}
+
+  currentIdx++;
+  if (currentIdx >= wrongChars.length) {
+    showStep('done');
+  } else {
+    startReview(currentIdx);
+  }
+}
+
+document.addEventListener('contextmenu',e=>e.preventDefault());
+load();
+</script>
+</body>
+</html>

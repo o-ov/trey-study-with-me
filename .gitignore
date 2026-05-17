@@ -1,0 +1,40 @@
+# Database
+*.db
+*.sqlite
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+*.egg-info/
+
+# Node
+node_modules/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads
+backend/uploads/
+backend/sessions/
+
+# Temp
+*.swp
+*.swo
+*~
+
+# Build artifacts
+dist/
+build/

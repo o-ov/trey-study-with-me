@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>批改</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .grade-btn {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 16px; border-radius: 12px;
+      font-size: 32px; cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .grade-btn:active { transform: scale(0.96); }
+    .grade-btn.correct  { background: #F6FFED; border-color: #52C41A; }
+    .grade-btn.wrong    { background: #FFF1F0; border-color: #FF4D4F; }
+    .grade-btn.selected { box-shadow: 0 0 0 3px var(--primary); }
+    .result-chip {
+      display: inline-block; padding: 4px 12px;
+      border-radius: 99px; font-size: 13px; font-weight: 600;
+    }
+    .result-correct { background: #F6FFED; color: #52C41A; }
+    .result-wrong   { background: #FFF1F0; color: #FF4D4F; }
+    .result-pending { background: #F5F5F5; color: #999; }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <button class="back-btn" onclick="history.back()">←</button>
+  <span id="header_title">批改第 1/10 字</span>
+</div>
+
+<div class="card" style="text-align:center">
+  <div style="font-size:14px;color:var(--sub);margin-bottom:4px">正确答案</div>
+  <div id="correct_char" style="font-size:48px;font-weight:700;color:var(--primary)">春</div>
+  <div id="correct_pinyin" style="font-size:18px;color:var(--sub);margin-top:4px">chūn</div>
+</div>
+
+<div class="card" style="text-align:center">
+  <div style="font-size:14px;color:var(--sub);margin-bottom:8px">孩子书写</div>
+  <img id="child_image" src="" style="max-width:100%;max-height:220px;border-radius:8px;border:1px solid #eee">
+</div>
+
+<div style="display:flex;gap:12px;margin-top:8px">
+  <div class="grade-btn correct" id="btn_correct" onclick="setGrade(true)">
+    <span>✅</span><span style="font-size:14px;margin-top:4px">对</span>
+  </div>
+  <div class="grade-btn wrong" id="btn_wrong" onclick="setGrade(false)">
+    <span>❌</span><span style="font-size:14px;margin-top:4px">错</span>
+  </div>
+</div>
+
+<div class="card" style="margin-top:12px">
+  <div style="font-size:14px;font-weight:600;margin-bottom:8px">已批改</div>
+  <div id="result_bar" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+</div>
+
+<div style="display:flex;gap:12px;margin-top:12px">
+  <button class="btn btn-outline" style="flex:1" onclick="prevChar()">← 上一字</button>
+  <button class="btn btn-primary" style="flex:1" onclick="nextChar()">下一字 →</button>
+</div>
+
+<div id="submit_area" style="margin-top:16px;display:none">
+  <button class="btn btn-success btn-large" onclick="submitGrade()">提交批改结果</button>
+</div>
+
+<script>
+const API = 'http://' + location.hostname + ':8080/api';
+const params = new URLSearchParams(location.search);
+const sid = parseInt(params.get('sid'));
+
+let chars = [];
+let currentIdx = 0;
+let grades = {};  // index -> true/false
+
+const BACKEND = 'http://' + location.hostname + ':8080';
+
+async function load() {
+  const data = await fetch(API + '/sessions/' + sid).then(r=>r.json());
+  chars = data.chars || [];
+  if (chars.length === 0) { alert('无数据'); return; }
+  renderResultBar();
+  showChar(0);
+}
+
+function showChar(idx) {
+  currentIdx = idx;
+  const c = chars[idx];
+  document.getElementById('header_title').textContent = '批改第 ' + (idx+1) + '/' + chars.length + ' 字';
+  document.getElementById('correct_char').textContent = c.char || c.word || '';
+  document.getElementById('correct_pinyin').textContent = c.pinyin || '';
+
+  const img = document.getElementById('child_image');
+  if (c.image_url) {
+    img.src = BACKEND + c.image_url;
+    img.style.display = 'block';
+  } else {
+    img.src = '';
+    img.style.display = 'none';
+  }
+
+  // 高亮按钮
+  ['btn_correct','btn_wrong'].forEach(id=>document.getElementById(id).classList.remove('selected'));
+  if (grades[currentIdx] === true)  document.getElementById('btn_correct').classList.add('selected');
+  if (grades[currentIdx] === false) document.getElementById('btn_wrong').classList.add('selected');
+
+  // 提交按钮
+  const all = chars.every((_, i) => i in grades);
+  document.getElementById('submit_area').style.display = all ? 'block' : 'none';
+}
+
+function setGrade(isCorrect) {
+  grades[currentIdx] = isCorrect;
+  renderResultBar();
+  showChar(currentIdx); // 刷新高亮
+}
+
+function renderResultBar() {
+  const bar = document.getElementById('result_bar');
+  bar.innerHTML = chars.map((c,i) => {
+    const g = grades[i];
+    const cls  = g === true ? 'result-correct' : g === false ? 'result-wrong' : 'result-pending';
+    const icon = g === true ? '✅' : g === false ? '❌' : (i+1);
+    return '<span class="result-chip ' + cls + '">' + icon + '</span>';
+  }).join('');
+}
+
+function prevChar() {
+  if (currentIdx > 0) showChar(currentIdx - 1);
+}
+function nextChar() {
+  if (currentIdx < chars.length - 1) showChar(currentIdx + 1);
+}
+
+async function submitGrade() {
+  const gradesList = chars.map((c, i) => ({
+    char:     c.char,
+    word:     c.word || '',
+    pinyin:   c.pinyin || '',
+    correct:  grades[i] === true,
+    image_url: c.image_url || ''
+  }));
+
+  try {
+    await fetch(API + '/sessions/' + sid + '/grade', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ grades: gradesList })
+    });
+    alert('✅ 批改完成！');
+    location.href = 'index.html';
+  } catch(e) {
+    alert('提交失败: ' + e);
+  }
+}
+
+load();
+</script>
+</body>
+</html>

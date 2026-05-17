@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>家长端</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div style="text-align:center;padding:16px 0 8px">
+  <div style="font-size:24px;font-weight:700">👨‍👩‍👧 家长端</div>
+  <div style="font-size:14px;color:var(--sub);margin-top:4px">管理孩子的听写练习</div>
+</div>
+
+<div id="pending_alert" class="card" style="display:none;background:#FFF7E6;border:1px solid #FFD591;cursor:pointer" onclick="location.href='pending.html'">
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-weight:700">📋 待批改</div>
+      <div style="font-size:13px;color:var(--sub);margin-top:4px">点击前往批改</div>
+    </div>
+    <span id="pending_count" class="badge-red">0</span>
+  </div>
+</div>
+
+<div class="card" style="margin-top:8px">
+  <div style="font-weight:700;margin-bottom:12px">今日概览</div>
+  <div style="display:flex;justify-content:space-around;text-align:center">
+    <div>
+      <div style="font-size:28px">📝</div>
+      <div id="today_submitted" style="font-size:20px;font-weight:700">0</div>
+      <div style="font-size:12px;color:var(--sub)">已提交</div>
+    </div>
+    <div>
+      <div style="font-size:28px">✅</div>
+      <div id="today_graded" style="font-size:20px;font-weight:700">0</div>
+      <div style="font-size:12px;color:var(--sub)">已批改</div>
+    </div>
+    <div>
+      <div style="font-size:28px">📕</div>
+      <div id="new_wrong" style="font-size:20px;font-weight:700;color:var(--error)">0</div>
+      <div style="font-size:12px;color:var(--sub)">新错字</div>
+    </div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+  <div class="card" style="text-align:center;cursor:pointer" onclick="location.href='pending.html'">
+    <div style="font-size:40px">📋</div>
+    <div style="font-weight:700;margin-top:6px">去批改</div>
+    <div style="font-size:12px;color:var(--sub);margin-top:4px">查看待批改</div>
+  </div>
+  <div class="card" style="text-align:center;cursor:pointer" onclick="location.href='wrongbook.html'">
+    <div style="font-size:40px">📕</div>
+    <div style="font-weight:700;margin-top:6px">错题本</div>
+    <div style="font-size:12px;color:var(--sub);margin-top:4px">查看错字</div>
+  </div>
+</div>
+
+<div class="spacer"></div>
+<nav class="tab-bar">
+  <div class="tab-item active">
+    <span class="tab-icon">🏠</span><span>首页</span>
+  </div>
+  <div class="tab-item" onclick="location.href='pending.html'">
+    <span class="tab-icon">📋</span><span>批改</span>
+  </div>
+  <div class="tab-item" onclick="location.href='wrongbook.html'">
+    <span class="tab-icon">📕</span><span>错题本</span>
+  </div>
+</nav>
+
+<script>
+const API = 'http://' + location.hostname + ':8080/api';
+
+async function load() {
+  const [submitted, graded, wb] = await Promise.all([
+    fetch(API + '/sessions?child_id=1&status=submitted').then(r=>r.json()),
+    fetch(API + '/sessions?child_id=1&status=graded').then(r=>r.json()),
+    fetch(API + '/wrongbook?child_id=1').then(r=>r.json())
+  ]);
+
+  const today = new Date().toISOString().slice(0,10);
+  const todaySubmit = submitted.filter(s=>s.created_at && s.created_at.slice(0,10)===today).length;
+  const todayGraded = graded.filter(s=>s.graded_at && s.graded_at.slice(0,10)===today).length;
+
+  document.getElementById('today_submitted').textContent = todaySubmit;
+  document.getElementById('today_graded').textContent = todayGraded;
+  document.getElementById('new_wrong').textContent = wb.wrongChars ? wb.wrongChars.length : 0;
+
+  const pending = submitted.length;
+  if (pending > 0) {
+    document.getElementById('pending_count').textContent = pending;
+    document.getElementById('pending_alert').style.display = 'block';
+  }
+}
+load();
+</script>
+</body>
+</html>

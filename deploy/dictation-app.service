@@ -1,0 +1,15 @@
+[Unit]
+Description=儿童汉字听写 App
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+ExecStart=/usr/bin/python3 /root/dictation_app/backend/app.py
+WorkingDirectory=/root/dictation_app
+StandardOutput=append:/var/log/dictation-app.log
+StandardError=append:/var/log/dictation-app.log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>英语学习 - 家长端</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .card { background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .section-title { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; letter-spacing: 0.05em; }
+    .word-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .word-chip { background: var(--bg); border-radius: 8px; padding: 8px 6px; text-align: center; font-size: 12px; }
+    .word-chip .en { font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .word-chip .cn { color: var(--text-secondary); font-size: 11px; }
+    .stat-row { display: flex; gap: 12px; margin-bottom: 16px; }
+    .stat-box { flex: 1; background: var(--bg); border-radius: 12px; padding: 14px; text-align: center; }
+    .stat-box .num { font-size: 28px; font-weight: 700; color: #004BFE; }
+    .stat-box .label { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+    .task-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 10px; }
+    .task-item:last-child { border-bottom: none; }
+    .task-icon { width: 36px; height: 36px; background: #004BFE15; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .task-info { flex: 1; }
+    .task-info .title { font-size: 14px; font-weight: 600; }
+    .task-info .sub { font-size: 11px; color: var(--text-secondary); }
+    .task-status { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+    .status-done { background: #E8F5E9; color: #2E7D32; }
+    .status-pending { background: #FFF3E0; color: #E65100; }
+    .back-btn { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--primary); font-size: 14px; text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a href="index.html" class="back-btn">← 返回</a>
+    <h1>本周英语</h1>
+  </header>
+  <main class="main">
+    <!-- 统计 -->
+    <div class="stat-row">
+      <div class="stat-box">
+        <div class="num" id="stat-words">–</div>
+        <div class="label">单词数</div>
+      </div>
+      <div class="stat-box">
+        <div class="num" id="stat-irregular">–</div>
+        <div class="label">不规则动词</div>
+      </div>
+      <div class="stat-box">
+        <div class="num" id="stat-pep">–</div>
+        <div class="label">PEP词汇</div>
+      </div>
+    </div>
+
+    <!-- 今日任务 -->
+    <div class="card">
+      <div class="section-title">今日任务</div>
+      <div id="today-tasks">
+        <div style="text-align:center;padding:20px;color:var(--text-secondary)">加载中...</div>
+      </div>
+    </div>
+
+    <!-- 本周单词 -->
+    <div class="card">
+      <div class="section-title">Spelling Words</div>
+      <div class="word-grid" id="spelling-list"></div>
+    </div>
+
+    <!-- 不规则动词 -->
+    <div class="card">
+      <div class="section-title">Irregular Verbs</div>
+      <div id="irregular-list"></div>
+    </div>
+
+    <!-- PEP词汇 -->
+    <div class="card">
+      <div class="section-title">PEP Unit 5</div>
+      <div class="word-grid" id="pep-list"></div>
+    </div>
+  </main>
+  <script>
+    const WEEK = JSON.parse(localStorage.getItem('current_week') || '{"week_date":"2026-05-11"}');
+
+    async function load() {
+      const [wordsRes, schedRes] = await Promise.all([
+        fetch(`/api/english/words?week_date=${WEEK.week_date}`),
+        fetch(`/api/english/schedule?child_id=1`)
+      ]);
+      const wordsData = await wordsRes.json();
+      const schedData = await schedRes.json();
+
+      const spelling = wordsData.words.filter(w => w.word_type === 'spelling');
+      const irregular = wordsData.words.filter(w => w.word_type === 'irregular');
+      const pep = wordsData.words.filter(w => w.word_type === 'pep');
+
+      document.getElementById('stat-words').textContent = spelling.length;
+      document.getElementById('stat-irregular').textContent = irregular.length;
+      document.getElementById('stat-pep').textContent = pep.length;
+
+      // Spelling grid
+      const sp = document.getElementById('spelling-list');
+      sp.innerHTML = spelling.map(w => `
+        <div class="word-chip">
+          <div class="en">${w.word}</div>
+          <div class="cn">${w.meaning}</div>
+        </div>`).join('');
+
+      // Irregular list
+      const ir = document.getElementById('irregular-list');
+      ir.innerHTML = irregular.map(v => `
+        <div class="task-item">
+          <div class="task-icon">🔁</div>
+          <div class="task-info">
+            <div class="title">${v.word}</div>
+            <div class="sub">${v.meaning}</div>
+          </div>
+        </div>`).join('');
+
+      // PEP grid
+      const pp = document.getElementById('pep-list');
+      pp.innerHTML = pep.map(w => `
+        <div class="word-chip">
+          <div class="en">${w.word}</div>
+          <div class="cn">${w.meaning}</div>
+        </div>`).join('');
+
+      // Today tasks
+      const today = new Date().toISOString().slice(0, 10);
+      const todayTasks = (schedData.schedule || []).filter(s => s.date === today);
+      const tt = document.getElementById('today-tasks');
+      if (!todayTasks.length) {
+        tt.innerHTML = '<div style="color:var(--text-secondary);text-align:center;padding:12px">今日无英语任务</div>';
+      } else {
+        tt.innerHTML = todayTasks.map(t => {
+          const icons = { spelling: '✏️', irregular: '🔁', pep: '📖' };
+          const labels = { spelling: 'Spelling听写', irregular: '不规则动词', pep: 'PEP词汇' };
+          return `<div class="task-item">
+            <div class="task-icon">${icons[t.task_type] || '📝'}</div>
+            <div class="task-info"><div class="title">${labels[t.task_type] || t.task_type}</div>
+            <div class="sub">${t.lesson} · ${JSON.parse(t.task_data|| '{}').count || 0}词</div></div>
+            <div class="task-status ${t.status === 'completed' ? 'status-done' : 'status-pending'}">${t.status === 'completed' ? '已完成' : '待完成'}</div>
+          </div>`;
+        }).join('');
+      }
+    }
+    load();
+  </script>
+</body>
+</html>

@@ -239,6 +239,53 @@ def init():
     )
     """)
 
+    # ── 英语表 ─────────────────────────────────────────────────
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS english_words (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        word TEXT NOT NULL,
+        word_type TEXT NOT NULL,
+        pos TEXT,
+        meaning TEXT,
+        pronunciation TEXT,
+        example TEXT,
+        lesson TEXT,
+        week_date TEXT NOT NULL
+    )
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS english_articles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT,
+        image_urls TEXT,
+        week_date TEXT NOT NULL,
+        order_num INTEGER DEFAULT 0
+    )
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS english_schedule (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        child_id INTEGER DEFAULT 1,
+        date TEXT NOT NULL,
+        task_type TEXT NOT NULL,
+        lesson TEXT,
+        task_data TEXT,
+        status TEXT DEFAULT 'pending'
+    )
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS english_daily_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        child_id INTEGER DEFAULT 1,
+        date TEXT NOT NULL,
+        task_type TEXT NOT NULL,
+        answers TEXT,
+        score INTEGER,
+        completed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     # ── 插入默认孩子 ───────────────────────────────────────────
     cur.execute("INSERT OR IGNORE INTO child (id, name) VALUES (1, '小树')")
 

@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>英语学习</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background: var(--bg); font-family: 'Microsoft YaHei', sans-serif; }
+    .header {
+      background: linear-gradient(135deg, #004BFE, #0066FF);
+      color: #fff; padding: 18px 16px 14px;
+      border-radius: 0 0 20px 20px;
+    }
+    .header h1 { font-size: 1.1rem; margin: 0 0 4px; }
+    .header p { font-size: 0.8rem; opacity: 0.85; margin: 0; }
+
+    .task-section { margin: 16px; }
+    .task-card {
+      background: var(--card); border-radius: 16px;
+      padding: 18px 16px; margin-bottom: 14px;
+      border: 1px solid var(--border);
+    }
+    .task-title {
+      font-size: 0.95rem; font-weight: 600;
+      color: var(--text); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .task-badge {
+      display: inline-block; padding: 2px 10px;
+      border-radius: 20px; font-size: 0.7rem; font-weight: 500;
+    }
+    .task-badge.spelling { background: #E8F0FF; color: #004BFE; }
+    .task-badge.irregular { background: #FFF3E0; color: #E65100; }
+    .task-badge.pep { background: #E0F7EF; color: #006644; }
+    .task-badge.reading { background: #F3E5F5; color: #6A1B9A; }
+    .task-badge.done { background: var(--success-bg, #E8F5E9); color: var(--success, #2E7D32); }
+
+    /* Word item */
+    .word-item {
+      background: var(--bg); border-radius: 12px;
+      padding: 14px; margin-bottom: 12px;
+      border: 1px solid var(--border);
+    }
+    .word-item-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px;
+    }
+    .word-text { font-size: 1.05rem; font-weight: 700; color: var(--primary); }
+    .word-pos { font-size: 0.75rem; color: var(--sub); background: var(--bg); padding: 2px 8px; border-radius: 8px; }
+
+    /* Dictation area */
+    .dictation-box {
+      background: #fff; border-radius: 12px;
+      padding: 16px; margin: 10px 0;
+      text-align: center; border: 2px dashed #E0E0E0;
+    }
+    .dictation-hint { font-size: 0.85rem; color: #666; margin-bottom: 8px; }
+    .play-btn {
+      background: #004BFE; color: #fff;
+      border: none; border-radius: 50%;
+      width: 52px; height: 52px;
+      font-size: 1.3rem; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .play-btn:active { transform: scale(0.95); }
+
+    /* Input */
+    .answer-input {
+      width: 100%; box-sizing: border-box;
+      padding: 10px 14px; font-size: 1rem;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      background: var(--bg); color: var(--text);
+      margin-top: 10px;
+    }
+    .answer-input:focus { outline: none; border-color: var(--primary); }
+
+    /* Choices */
+    .choices { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .choice-btn {
+      padding: 10px 14px; border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--card); color: var(--text);
+      font-size: 0.9rem; text-align: left;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .choice-btn:hover { border-color: var(--primary); }
+    .choice-btn.selected { border-color: var(--primary); background: #E8F0FF; color: var(--primary); font-weight: 600; }
+    .choice-btn.correct { border-color: #2E7D32; background: #E8F5E9; }
+    .choice-btn.wrong { border-color: #C62828; background: #FFEBEE; }
+
+    /* Irregular verb item */
+    .verb-sentence {
+      font-size: 0.9rem; color: #444;
+      background: #F8F8F8; padding: 10px 14px;
+      border-radius: 10px; margin-bottom: 8px;
+      line-height: 1.7;
+    }
+    .verb-blank {
+      display: inline-block; min-width: 80px;
+      border-bottom: 2px solid #004BFE;
+      margin: 0 4px; color: var(--primary); font-weight: 700;
+    }
+
+    /* Reading article */
+    .article-box {
+      background: #fff; border-radius: 16px;
+      padding: 24px 20px; line-height: 2;
+      font-size: 1rem; color: #222;
+    }
+    .article-box h2 { text-align: center; font-size: 1.3rem; margin-bottom: 16px; color: #004BFE; }
+    .article-box p { margin: 0 0 12px; text-indent: 2em; }
+
+    /* Submit */
+    .submit-btn {
+      width: 100%; padding: 14px; border-radius: 14px;
+      background: #004BFE; color: #fff;
+      border: none; font-size: 1rem; font-weight: 600;
+      cursor: pointer; margin-top: 10px;
+    }
+    .submit-btn:active { transform: scale(0.98); }
+    .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* Progress */
+    .progress-bar {
+      background: rgba(255,255,255,30%); border-radius: 8px;
+      height: 6px; margin-top: 10px; overflow: hidden;
+    }
+    .progress-fill { background: #FFD800; height: 100%; border-radius: 8px; transition: width 0.3s; }
+    .step-indicator { font-size: 0.78rem; opacity: 0.85; margin-top: 4px; }
+
+    /* Feedback */
+    .feedback-correct { color: #2E7D32; font-weight: 600; }
+    .feedback-wrong { color: #C62828; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🇬🇧 英语学习</h1>
+    <p id="dateDisplay"></p>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="step-indicator" id="stepIndicator">准备中...</div>
+  </div>
+
+  <div id="taskList" class="task-section"></div>
+
+  <script>
+    const API = 'http://43.160.222.242:8080/api';
+    let currentStep = 0;
+    let tasks = [];
+    let taskResults = {};
+
+    // Week start (Monday)
+    function getWeekDate() {
+      const today = new Date();
+      const day = today.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() + diff);
+      return monday.toISOString().slice(0, 10);
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr);
+      return `${d.getMonth()+1}月${d.getDate()}日`;
+    }
+
+    async function loadTasks() {
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById('dateDisplay').textContent = `今日任务 · ${formatDate(today)}`;
+
+      try {
+        // 获取今日排期
+        const schedRes = await fetch(`${API}/english/schedule?date=${today}&child_id=1`);
+        const schedData = await schedRes.json();
+        tasks = schedData.tasks || [];
+
+        // 如果没有排期，加载本周所有内容
+        if (tasks.length === 0) {
+          const week = getWeekDate();
+          const wordsRes = await fetch(`${API}/english/words?week_date=${week}`);
+          const wordsData = await wordsRes.json();
+          const articlesRes = await fetch(`${API}/english/articles?week_date=${week}`);
+          const articlesData = await articlesRes.json();
+
+          buildTaskList(wordsData.words || [], articlesData.articles || []);
+        } else {
+          // 按排期渲染
+          renderScheduleTasks(tasks);
+        }
+      } catch(e) {
+        document.getElementById('taskList').innerHTML = '<div class="task-card"><p style="color:#999;text-align:center">暂无英语任务</p></div>';
+      }
+    }
+
+    function buildTaskList(words, articles) {
+      const today = new Date().toISOString().slice(0, 10);
+      const taskTypes = [
+        { type: 'spelling', label: 'Spelling Words', badge: 'spelling', desc: '听写 + 选择中文 + 选择词性' },
+        { type: 'irregular', label: 'Irregular Verbs', badge: 'irregular', desc: '根据提示填写正确时态' },
+        { type: 'pep', label: 'PEP Words', badge: 'pep', desc: '英文听写' },
+        { type: 'reading', label: '阅读打卡', badge: 'reading', desc: '阅读文章并提交' },
+      ];
+
+      let html = '';
+      taskTypes.forEach((t, i) => {
+        html += `
+        <div class="task-card" id="task-${t.type}">
+          <div class="task-title">
+            <span class="task-badge ${t.badge}">${t.label}</span>
+            <span style="font-size:0.8rem;color:var(--sub)">${t.desc}</span>
+          </div>
+          <div id="task-content-${t.type}">
+            <button class="submit-btn" onclick="startTask('${t.type}')">开始 ${t.label}</button>
+          </div>
+        </div>`;
+      });
+      document.getElementById('taskList').innerHTML = html;
+      document.getElementById('stepIndicator').textContent = `共 ${taskTypes.length} 项任务`;
+    }
+
+    async function startTask(type) {
+      const week = getWeekDate();
+      const today = new Date().toISOString().slice(0, 10);
+      const wordsRes = await fetch(`${API}/english/words?week_date=${week}`);
+      const wordsData = await wordsRes.json();
+      const allWords = wordsData.words || [];
+
+      if (type === 'spelling') {
+        renderSpellingTask(allWords.filter(w => w.word_type === 'spelling'));
+      } else if (type === 'irregular') {
+        renderIrregularTask(allWords.filter(w => w.word_type === 'irregular'));
+      } else if (type === 'pep') {
+        renderPepTask(allWords.filter(w => w.word_type === 'pep'));
+      } else if (type === 'reading') {
+        renderReadingTask(today);
+      }
+    }
+
+    // ─── Spelling Words ───────────────────────────────────────────
+    function renderSpellingTask(words) {
+      // 每天12个
+      const daily = words.slice(0, 12);
+      let html = '<div id="spelling-items"></div>';
+      document.getElementById('task-content-spelling').innerHTML = html;
+
+      let idx = 0;
+      taskResults['spelling'] = { answers: [], score: 0 };
+
+      function showWord() {
+        if (idx >= daily.length) {
+          finishSpelling(daily.length);
+          return;
+        }
+        const w = daily[idx];
+        const container = document.getElementById('spelling-items');
+        container.innerHTML = buildSpellingItem(w, idx + 1, daily.length);
+        document.getElementById('progressFill').style.width = ((idx/daily.length)*100) + '%';
+        document.getElementById('stepIndicator').textContent = `Spelling ${idx+1}/${daily.length}`;
+      }
+
+      window.playSpellingWord = function(word) {
+        const utt = new SpeechSynthesisUtterance(word);
+        utt.lang = 'en-US'; utt.rate = 0.8;
+        speechSynthesis.speak(utt);
+      };
+
+      window.submitSpelling = function() {
+        const input = document.getElementById('spelling-input').value.trim().toLowerCase();
+        const correct = daily[idx].word.toLowerCase();
+        const correctMark = input === correct;
+        taskResults['spelling'].answers.push({ word: daily[idx].word, given: input, correct: correctMark });
+        if (correctMark) taskResults['spelling'].score++;
+
+        // 显示正确性
+        const feedbackEl = document.getElementById('spelling-feedback');
+        if (feedbackEl) {
+          feedbackEl.innerHTML = correctMark
+            ? '<span class="feedback-correct">✓ 正确！</span>'
+            : `<span class="feedback-wrong">✗ 正确答案：${daily[idx].word}</span>`;
+        }
+
+        // 显示词性和中文（选择题）
+        setTimeout(() => {
+          showMeaningChoices(idx, daily, () => {
+            idx++;
+            showWord();
+          });
+        }, 600);
+      };
+
+      window.selectMeaning = function(pos) { taskResults['spelling'].currentPos = pos; };
+
+      showWord();
+    }
+
+    function buildSpellingItem(w, num, total) {
+      return `
+      <div class="word-item">
+        <div class="word-item-header">
+          <span style="font-size:0.8rem;color:var(--sub)">${num} / ${total}</span>
+          <span class="task-badge spelling">Spelling</span>
+        </div>
+        <div style="text-align:center;margin:12px 0">
+          <button class="play-btn" onclick="playSpellingWord('${w.word}')">🔊</button>
+          <div class="dictation-hint">听单词，写出英文</div>
+        </div>
+        <input class="answer-input" id="spelling-input" placeholder="输入英文单词" autocomplete="off" />
+        <div id="spelling-feedback" style="margin-top:8px;min-height:20px"></div>
+        <button class="submit-btn" style="margin-top:12px" onclick="submitSpelling()">确认</button>
+      </div>`;
+    }
+
+    function showMeaningChoices(idx, words, onDone) {
+      const w = words[idx];
+      const container = document.getElementById('spelling-items');
+      const meanings = getRandomMeanings(w.meaning, 3);
+      const posOptions = ['n.', 'v.', 'adj.', 'adv.'];
+
+      container.innerHTML = `
+      <div class="word-item">
+        <div style="font-size:1rem;font-weight:700;color:var(--primary);margin-bottom:12px">${w.word}</div>
+        <div style="font-size:0.85rem;color:var(--sub);margin-bottom:10px">选择中文意思：</div>
+        <div class="choices">
+          ${meanings.map(m => `<button class="choice-btn" onclick="selectMeaning('${m}');this.classList.add('selected')">${m}</button>`).join('')}
+        </div>
+        <div style="font-size:0.85rem;color:var(--sub);margin:12px 0 10px">选择词性（可多选）：</div>
+        <div class="choices" id="pos-choices">
+          ${posOptions.map(p => `<button class="choice-btn" id="pos-${p.replace('.','')}" onclick="togglePos('${p}',this)">${p}</button>`).join('')}
+        </div>
+        <button class="submit-btn" style="margin-top:14px" onclick="finishMeaningChoice()">下一题</button>
+      </div>`;
+      window._meaningCallback = onDone;
+      window._selectedPos = [];
+    }
+
+    window.togglePos = function(pos, btn) {
+      btn.classList.toggle('selected');
+    };
+
+    function finishMeaningChoice() {
+      const selected = document.querySelectorAll('#pos-choices .choice-btn.selected');
+      taskResults['spelling'].answers[idx].givenPos = Array.from(selected).map(b => b.textContent.trim());
+      if (window._meaningCallback) window._meaningCallback();
+    }
+
+    function finishSpelling(total) {
+      const r = taskResults['spelling'];
+      document.getElementById('progressFill').style.width = '100%';
+      document.getElementById('stepIndicator').textContent = `完成！得分 ${r.score}/${total}`;
+      document.getElementById('task-content-spelling').innerHTML = `
+        <div style="text-align:center;padding:20px 0">
+          <div style="font-size:2rem">${r.score >= total*0.8 ? '🎉' : '💪'}</div>
+          <div style="font-size:1.1rem;font-weight:700;margin-top:8px">Spelling 完成！</div>
+          <div style="color:var(--sub);margin-top:6px">得分：${r.score} / ${total}</div>
+          <button class="submit-btn" style="margin-top:16px" onclick="saveLogAndContinue('spelling',${r.score},${total})">继续下一项</button>
+        </div>`;
+    }
+
+    function getRandomMeanings(correct, count) {
+      const all = ['苹果', '香蕉', '奶牛', '怎样', '现在', '叮', '找到', '声音', '地面', '我们的', '大喊', '马上', '旧的', '马', '能够', '感冒', '应该', '木头', '老鼠', '数数', '凉爽', '房屋', '大声', '中午', '嘴', '传递', '使用', '头', '手臂', '腿', '后背', '尾巴', '牙齿', '手', '脚', '踢', '得分', '气球', '触摸'];
+      const filtered = all.filter(m => m !== correct);
+      const shuffled = filtered.sort(() => Math.random() - 0.5).slice(0, count);
+      shuffled.splice(Math.floor(Math.random() * (count+1)), 0, correct);
+      return shuffled.slice(0, count+1).sort(() => Math.random() - 0.5);
+    }
+
+    // ─── Irregular Verbs ─────────────────────────────────────────
+    function renderIrregularTask(words) {
+      const daily = words.slice(0, 8);
+      let idx = 0;
+      taskResults['irregular'] = { answers: [], score: 0 };
+
+      function showVerb() {
+        if (idx >= daily.length) {
+          finishIrregular(daily.length);
+          return;
+        }
+        const w = daily[idx];
+        const tenses = ['past', 'past_participle'];
+        const tense = tenses[Math.floor(Math.random() * tenses.length)];
+        const tenseLabel = tense === 'past' ? '过去式' : '过去分词';
+        const answer = w.word.split('/')[tense === 'past' ? 1 : 2] || w.word;
+
+        taskResults['irregular'].answers.push({ base: w.word.split('/')[0], tense, correct: answer });
+
+        document.getElementById('task-content-irregular').innerHTML = `
+        <div id="verb-items">
+          <div class="word-item">
+            <div class="word-item-header">
+              <span style="font-size:0.8rem;color:var(--sub)">${idx+1} / ${daily.length}</span>
+              <span class="task-badge irregular">Irregular Verbs</span>
+            </div>
+            <div style="font-size:0.85rem;color:var(--sub);margin-bottom:12px">
+              原型：<b style="color:var(--primary)">${w.word.split('/')[0]}</b>（${tenseLabel}）
+            </div>
+            <div class="verb-sentence">
+              ${getVerbSentence(w.word.split('/')[0], answer, tense)}
+            </div>
+            <input class="answer-input" id="verb-input" placeholder="填写${tenseLabel}" autocomplete="off" />
+            <div id="verb-feedback" style="margin-top:8px;min-height:20px"></div>
+            <button class="submit-btn" style="margin-top:12px" onclick="submitVerb()">确认</button>
+          </div>
+        </div>`;
+        document.getElementById('progressFill').style.width = ((idx/daily.length)*100) + '%';
+        document.getElementById('stepIndicator').textContent = `Irregular ${idx+1}/${daily.length}`;
+      }
+
+      window.submitVerb = function() {
+        const input = document.getElementById('verb-input').value.trim().toLowerCase();
+        const item = taskResults['irregular'].answers[idx];
+        const correct = item.correct.toLowerCase();
+        const ok = input === correct;
+        if (ok) taskResults['irregular'].score++;
+        document.getElementById('verb-feedback').innerHTML = ok
+          ? '<span class="feedback-correct">✓ 正确！</span>'
+          : `<span class="feedback-wrong">✗ 正确答案：${item.correct}</span>`;
+        setTimeout(() => { idx++; showVerb(); }, 700);
+      };
+
+      showVerb();
+    }
+
+    function getVerbSentence(base, answer, tense) {
+      const templates = {
+        past: [
+          `Yesterday, I _____ to school.`,
+          `Last night, she _____ a story.`,
+          `He _____ fast yesterday.`,
+          `We _____ to the park.`
+        ],
+        past_participle: [
+          `I have _____ water.`,
+          `She has _____ a song.`,
+          `They have _____ in the sea.`,
+          `The ticket _____ me 30 yuan.`
+        ]
+      };
+      const pool = templates[tense];
+      const tmpl = pool[Math.floor(Math.random() * pool.length)];
+      return tmpl.replace('_____', `<span class="verb-blank">${answer}</span>`);
+    }
+
+    function finishIrregular(total) {
+      const r = taskResults['irregular'];
+      document.getElementById('progressFill').style.width = '100%';
+      document.getElementById('stepIndicator').textContent = `完成！得分 ${r.score}/${total}`;
+      document.getElementById('task-content-irregular').innerHTML = `
+        <div style="text-align:center;padding:20px 0">
+          <div style="font-size:2rem">${r.score >= total*0.8 ? '🎉' : '💪'}</div>
+          <div style="font-size:1.1rem;font-weight:700;margin-top:8px">Irregular Verbs 完成！</div>
+          <div style="color:var(--sub);margin-top:6px">得分：${r.score} / ${total}</div>
+          <button class="submit-btn" style="margin-top:16px" onclick="saveLogAndContinue('irregular',${r.score},${total})">继续下一项</button>
+        </div>`;
+    }
+
+    // ─── PEP Words ────────────────────────────────────────────────
+    function renderPepTask(words) {
+      const daily = words.slice(0, 15);
+      let idx = 0;
+      taskResults['pep'] = { score: 0 };
+
+      function showWord() {
+        if (idx >= daily.length) {
+          finishPep(daily.length);
+          return;
+        }
+        const w = daily[idx];
+        document.getElementById('task-content-pep').innerHTML = `
+        <div class="word-item">
+          <div class="word-item-header">
+            <span style="font-size:0.8rem;color:var(--sub)">${idx+1} / ${daily.length}</span>
+            <span class="task-badge pep">PEP Words</span>
+          </div>
+          <div style="text-align:center;margin:12px 0">
+            <button class="play-btn" onclick="playSpellingWord('${w.word}')">🔊</button>
+            <div class="dictation-hint">听单词，写出英文</div>
+          </div>
+          <input class="answer-input" id="pep-input" placeholder="输入英文单词" autocomplete="off" />
+          <div id="pep-feedback" style="margin-top:8px;min-height:20px"></div>
+          <button class="submit-btn" style="margin-top:12px" onclick="submitPep()">确认</button>
+        </div>`;
+        document.getElementById('progressFill').style.width = ((idx/daily.length)*100) + '%';
+        document.getElementById('stepIndicator').textContent = `PEP ${idx+1}/${daily.length}`;
+      }
+
+      window.submitPep = function() {
+        const input = document.getElementById('pep-input').value.trim().toLowerCase();
+        const correct = daily[idx].word.toLowerCase();
+        const ok = input === correct;
+        if (ok) taskResults['pep'].score++;
+        document.getElementById('pep-feedback').innerHTML = ok
+          ? '<span class="feedback-correct">✓ 正确！</span>'
+          : `<span class="feedback-wrong">✗ 正确答案：${daily[idx].word}</span>`;
+        setTimeout(() => { idx++; showWord(); }, 700);
+      };
+
+      showWord();
+    }
+
+    function finishPep(total) {
+      const r = taskResults['pep'];
+      document.getElementById('progressFill').style.width = '100%';
+      document.getElementById('stepIndicator').textContent = `完成！得分 ${r.score}/${total}`;
+      document.getElementById('task-content-pep').innerHTML = `
+        <div style="text-align:center;padding:20px 0">
+          <div style="font-size:2rem">${r.score >= total*0.8 ? '🎉' : '💪'}</div>
+          <div style="font-size:1.1rem;font-weight:700;margin-top:8px">PEP Words 完成！</div>
+          <div style="color:var(--sub);margin-top:6px">得分：${r.score} / ${total}</div>
+          <button class="submit-btn" style="margin-top:16px" onclick="saveLogAndContinue('pep',${r.score},${total})">继续下一项</button>
+        </div>`;
+    }
+
+    // ─── Reading ──────────────────────────────────────────────────
+    async function renderReadingTask(today) {
+      const week = getWeekDate();
+      const articlesRes = await fetch(`${API}/english/articles?week_date=${week}`);
+      const data = await articlesRes.json();
+      const articles = data.articles || [];
+
+      if (articles.length === 0) {
+        document.getElementById('task-content-reading').innerHTML = `
+          <div style="text-align:center;padding:20px;color:var(--sub)">本周暂无阅读文章</div>`;
+        return;
+      }
+
+      // 显示第一篇
+      const article = articles[0];
+      let html = `<div class="article-box">`;
+      if (article.image_path) {
+        html += `<img src="${API}/uploads/english/${week}/${article.image_path}" style="max-width:100%;border-radius:8px;margin-bottom:16px" />`;
+      }
+      if (article.content) {
+        const paragraphs = article.content.split('\n').filter(p => p.trim());
+        html += `<h2>${article.title || 'Reading'}</h2>`;
+        paragraphs.forEach(p => { html += `<p>${p}</p>`; });
+      }
+      html += `</div><button class="submit-btn" style="margin-top:14px" onclick="submitReading()">打卡完成 ✓</button>`;
+
+      document.getElementById('task-content-reading').innerHTML = html;
+      document.getElementById('progressFill').style.width = '50%';
+      document.getElementById('stepIndicator').textContent = '阅读中...';
+    }
+
+    window.submitReading = function() {
+      const today = new Date().toISOString().slice(0, 10);
+      fetch(`${API}/english/daily-log`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ child_id: 1, date: today, task_type: 'reading', score: 1 })
+      }).then(() => {
+        document.getElementById('progressFill').style.width = '100%';
+        document.getElementById('stepIndicator').textContent = '阅读打卡完成 ✓';
+        document.getElementById('task-content-reading').innerHTML = `
+          <div style="text-align:center;padding:20px 0">
+            <div style="font-size:2rem">✓</div>
+            <div style="font-size:1.1rem;font-weight:700;margin-top:8px">阅读打卡完成！</div>
+            <button class="submit-btn" style="margin-top:16px;background:#2E7D32" onclick="checkAllDone()">返回首页</button>
+          </div>`;
+      });
+    };
+
+    // ─── Common ────────────────────────────────────────────────────
+    function saveLogAndContinue(type, score, total) {
+      const today = new Date().toISOString().slice(0, 10);
+      fetch(`${API}/english/daily-log`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ child_id: 1, date: today, task_type: type, score, answers: JSON.stringify(taskResults[type] || {}) })
+      }).then(() => {
+        // Mark task card as done
+        const card = document.querySelector(`#task-${type} .task-badge`);
+        if (card) { card.classList.add('done'); card.textContent = card.textContent + ' ✓'; }
+      });
+    }
+
+    function checkAllDone() { window.location.href = 'index.html'; }
+
+    // ─── Init ──────────────────────────────────────────────────────
+    loadTasks();
+  </script>
+</body>
+</html>

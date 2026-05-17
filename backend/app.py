@@ -1008,6 +1008,176 @@ def api_wrongbook():
     return jsonify({"wrongbook": [{"char": r[0], "word": r[1], "pinyin": r[2], "wrong_count": r[3]} for r in rows]})
 
 
+# ═══════════════════════════════════════════════════════════════
+# English 模块 API
+# ═══════════════════════════════════════════════════════════════
+
+ENGLISH_UPLOAD_DIR = os.path.join(BASE_DIR, "uploads", "english")
+os.makedirs(ENGLISH_UPLOAD_DIR, exist_ok=True)
+
+@app.route("/api/english/upload", methods=["POST"])
+def api_english_upload():
+    """接收 PDF 文件或图片，保存到 uploads/english/{week_date}/"""
+    week_date = request.form.get("week_date", date.today().strftime("%Y-%m-%d"))
+    target_dir = os.path.join(ENGLISH_UPLOAD_DIR, week_date)
+    os.makedirs(target_dir, exist_ok=True)
+
+    results = {"words": [], "articles": [], "images": []}
+
+    # 批量处理上传文件
+    files = request.files.getlist("files")
+    for f in files:
+        if not f.filename:
+            continue
+        fname = secure_filename(f.filename)
+        f.save(os.path.join(target_dir, fname))
+
+        ext = fname.lower().split(".")[-1]
+        if ext == "pdf":
+            results["type"] = "pdf"
+        elif ext in ("jpg", "jpeg", "png", "webp"):
+            results["images"].append(fname)
+
+    return jsonify({"success": True, "week_date": week_date, "saved": len(files), "details": results})
+
+
+@app.route("/api/english/words", methods=["GET"])
+def api_english_words():
+    """获取本周英语单词"""
+    week_date = request.args.get("week_date", date.today().strftime("%Y-%m-%d"))
+    word_type = request.args.get("type")  # spelling / irregular / pep
+
+    db = get_db()
+    cur = db.cursor()
+    if word_type:
+        cur.execute(
+            "SELECT id, word, pronunciation, pos, meaning, lesson, word_type FROM english_words WHERE week_date=? AND word_type=? ORDER BY id",
+            (week_date, word_type)
+        )
+    else:
+        cur.execute(
+            "SELECT id, word, pronunciation, pos, meaning, lesson, word_type FROM english_words WHERE week_date=? ORDER BY id",
+            (week_date,)
+        )
+    rows = cur.fetchall()
+    db.close()
+
+    words = [dict(zip(["id","word","pronunciation","pos","meaning","lesson","word_type"], r)) for r in rows]
+    return jsonify({"week_date": week_date, "words": words})
+
+
+@app.route("/api/english/articles", methods=["GET"])
+def api_english_articles():
+    """获取本周阅读文章"""
+    week_date = request.args.get("week_date", date.today().strftime("%Y-%m-%d"))
+    db = get_db()
+    cur = db.cursor()
+    cur.execute(
+        "SELECT id, title, content, image_path, page_num, order_num FROM english_articles WHERE week_date=? ORDER BY order_num",
+        (week_date,)
+    )
+    rows = cur.fetchall()
+    db.close()
+    articles = [dict(zip(["id","title","content","image_path","page_num","order_num"], r)) for r in rows]
+    return jsonify({"week_date": week_date, "articles": articles})
+
+
+@app.route("/api/english/schedule", methods=["GET"])
+def api_english_schedule():
+    """获取某天英语任务"""
+    target_date = request.args.get("date", date.today().strftime("%Y-%m-%d"))
+    child_id = request.args.get("child_id", 1, type=int)
+    db = get_db()
+    cur = db.cursor()
+    cur.execute(
+        "SELECT id, date, task_type, lesson, task_data, status FROM english_schedule WHERE child_id=? AND date=? ORDER BY task_type",
+        (child_id, target_date)
+    )
+    rows = cur.fetchall()
+    db.close()
+    tasks = [dict(zip(["id","date","task_type","lesson","task_data","status"], r)) for r in rows]
+    return jsonify({"date": target_date, "tasks": tasks})
+
+
+@app.route("/api/english/schedule", methods=["POST"])
+def api_english_schedule_post():
+    """写入/更新英语每日任务"""
+    data = request.json
+    child_id = data.get("child_id", 1)
+    date_str = data["date"]
+    task_type = data["task_type"]
+    lesson = data.get("lesson", "")
+    task_data = json.dumps(data.get("task_data", {}))
+
+    db = get_db()
+    cur = db.cursor()
+    cur.execute(
+        "INSERT OR REPLACE INTO english_schedule (child_id, date, task_type, lesson, task_data) VALUES (?,?,?,?,?)",
+        (child_id, date_str, task_type, lesson, task_data)
+    )
+    db.commit()
+    schedule_id = cur.lastrowid
+    db.close()
+    return jsonify({"success": True, "id": schedule_id})
+
+
+@app.route("/api/english/daily-log", methods=["GET", "POST"])
+def api_english_daily_log():
+    """查询或提交每日英语任务记录"""
+    if request.method == "GET":
+        target_date = request.args.get("date", date.today().strftime("%Y-%m-%d"))
+        child_id = request.args.get("child_id", 1, type=int)
+        db = get_db()
+        cur = db.cursor()
+        cur.execute(
+            "SELECT id, date, task_type, score, answers FROM english_daily_log WHERE child_id=? AND date=?",
+            (child_id, target_date)
+        )
+        rows = cur.fetchall()
+        db.close()
+        log = [dict(zip(["id","date","task_type","score","answers"], r)) for r in rows]
+        return jsonify({"date": target_date, "log": log})
+
+    data = request.json
+    child_id = data.get("child_id", 1)
+    date_str = data["date"]
+    task_type = data["task_type"]
+    score = data.get("score", 0)
+    answers = json.dumps(data.get("answers", []))
+
+    db = get_db()
+    cur = db.cursor()
+    cur.execute(
+        "INSERT INTO english_daily_log (child_id, date, task_type, score, answers) VALUES (?,?,?,?,?)",
+        (child_id, date_str, task_type, score, answers)
+    )
+    db.commit()
+    log_id = cur.lastrowid
+    db.close()
+    return jsonify({"success": True, "id": log_id})
+
+
+@app.route("/api/english/word-practice", methods=["GET"])
+def api_english_word_practice():
+    """获取某日单词练习任务（含题目）"""
+    target_date = request.args.get("date", date.today().strftime("%Y-%m-%d"))
+    task_type = request.args.get("task_type")  # spelling / irregular / pep
+    word_type_map = {"spelling": "spelling", "irregular": "irregular", "pep": "pep"}
+
+    db = get_db()
+    cur = db.cursor()
+    cur.execute(
+        "SELECT id, word, pronunciation, pos, meaning, lesson, word_type FROM english_words WHERE week_date=? AND word_type=? ORDER BY id",
+        (target_date, word_type_map.get(task_type, "spelling"))
+    )
+    rows = cur.fetchall()
+    db.close()
+
+    words = [dict(zip(["id","word","pronunciation","pos","meaning","lesson","word_type"], r)) for r in rows]
+    return jsonify({"date": target_date, "task_type": task_type, "words": words})
+
+
+# ═══════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 8080))

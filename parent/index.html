@@ -5,80 +5,161 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>家长端</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .tab-view { display: none; }
+    .tab-view.active { display: block; }
+    .card { background: var(--card); border-radius: 16px; padding: 18px 16px; border: 1px solid var(--border); }
+    .card-link { display: block; background: var(--card); border-radius: 16px; padding: 18px 16px; border: 1px solid var(--border); text-align: center; cursor: pointer; transition: all 0.15s; text-decoration: none; color: var(--text); }
+    .card-link:hover { border-color: var(--primary); }
+    .card-link:active { transform: scale(0.98); }
+    .badge-red { background: #FF4D4F; color: #fff; border-radius: 20px; padding: 2px 10px; font-size: 13px; font-weight: 600; }
+    .badge-blue { background: #004BFE; color: #fff; border-radius: 20px; padding: 2px 10px; font-size: 13px; font-weight: 600; }
+    .badge-green { background: #52C41A; color: #fff; border-radius: 20px; padding: 2px 10px; font-size: 13px; font-weight: 600; }
+    .stat-grid { display: flex; justify-content: space-around; text-align: center; }
+    .stat-item .emoji { font-size: 28px; }
+    .stat-item .num { font-size: 20px; font-weight: 700; }
+    .stat-item .label { font-size: 12px; color: var(--sub); }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .section-title { font-size: 0.8rem; color: var(--sub); margin-bottom: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+    .task-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .task-row:last-child { border-bottom: none; }
+    .task-type-badge { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 0.7rem; font-weight: 600; }
+    .task-type-badge.spelling { background: #E8F0FF; color: #004BFE; }
+    .task-type-badge.irregular { background: #FFF3E0; color: #E65100; }
+    .task-type-badge.pep { background: #E0F7EF; color: #006644; }
+    .task-type-badge.reading { background: #F3E5F5; color: #6A1B9A; }
+  </style>
 </head>
 <body>
 
-<div style="text-align:center;padding:16px 0 8px">
-  <div style="font-size:24px;font-weight:700">👨‍👩‍👧 家长端</div>
-  <div style="font-size:14px;color:var(--sub);margin-top:4px">管理孩子的听写练习</div>
+<!-- ─── 中文 Tab ─── -->
+<div id="view-chinese" class="tab-view active">
+  <div style="text-align:center;padding:16px 0 8px">
+    <div style="font-size:22px;font-weight:700">📖 语文</div>
+    <div style="font-size:13px;color:var(--sub);margin-top:3px">孩子的听写与学习</div>
+  </div>
+
+  <div id="pending_alert" class="card" style="display:none;background:#FFF7E6;border-color:#FFD591;cursor:pointer;margin:0 12px 12px" onclick="location.href='pending.html'">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-weight:700">📋 待批改</div>
+        <div style="font-size:13px;color:var(--sub);margin-top:4px">点击前往批改</div>
+      </div>
+      <span id="pending_count" class="badge-red">0</span>
+    </div>
+  </div>
+
+  <div class="card" style="margin:0 12px 12px">
+    <div class="section-title">今日概览</div>
+    <div class="stat-grid">
+      <div class="stat-item">
+        <div class="emoji">📝</div>
+        <div id="today_submitted" class="num">0</div>
+        <div class="label">已提交</div>
+      </div>
+      <div class="stat-item">
+        <div class="emoji">✅</div>
+        <div id="today_graded" class="num">0</div>
+        <div class="label">已批改</div>
+      </div>
+      <div class="stat-item">
+        <div class="emoji">📕</div>
+        <div id="new_wrong" class="num" style="color:var(--error)">0</div>
+        <div class="label">新错字</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:0 12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+    <a class="card-link" href="pending.html">
+      <div style="font-size:32px;margin-bottom:4px">📋</div>
+      <div style="font-weight:700;font-size:0.9rem">待批改</div>
+    </a>
+    <a class="card-link" href="wrongbook.html">
+      <div style="font-size:32px;margin-bottom:4px">📕</div>
+      <div style="font-weight:700;font-size:0.9rem">错题本</div>
+    </a>
+  </div>
+
+  <div style="padding:0 12px">
+    <a class="card-link" href="weekly-plan.html" style="display:block">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:18px;font-weight:700">📅 本周计划</div>
+          <div style="font-size:12px;color:var(--sub);margin-top:2px">AI 智能分配每日任务</div>
+        </div>
+        <span style="font-size:20px">→</span>
+      </div>
+    </a>
+  </div>
 </div>
 
-<div id="pending_alert" class="card" style="display:none;background:#FFF7E6;border:1px solid #FFD591;cursor:pointer" onclick="location.href='pending.html'">
-  <div style="display:flex;align-items:center;justify-content:space-between">
-    <div>
-      <div style="font-weight:700">📋 待批改</div>
-      <div style="font-size:13px;color:var(--sub);margin-top:4px">点击前往批改</div>
-    </div>
-    <span id="pending_count" class="badge-red">0</span>
+<!-- ─── 英文 Tab ─── -->
+<div id="view-english" class="tab-view">
+  <div style="text-align:center;padding:16px 0 8px">
+    <div style="font-size:22px;font-weight:700">🇬🇧 英语</div>
+    <div style="font-size:13px;color:var(--sub);margin-top:3px">本周学习进度</div>
   </div>
-</div>
 
-<div class="card" style="margin-top:8px">
-  <div style="font-weight:700;margin-bottom:12px">今日概览</div>
-  <div style="display:flex;justify-content:space-around;text-align:center">
-    <div>
-      <div style="font-size:28px">📝</div>
-      <div id="today_submitted" style="font-size:20px;font-weight:700">0</div>
-      <div style="font-size:12px;color:var(--sub)">已提交</div>
-    </div>
-    <div>
-      <div style="font-size:28px">✅</div>
-      <div id="today_graded" style="font-size:20px;font-weight:700">0</div>
-      <div style="font-size:12px;color:var(--sub)">已批改</div>
-    </div>
-    <div>
-      <div style="font-size:28px">📕</div>
-      <div id="new_wrong" style="font-size:20px;font-weight:700;color:var(--error)">0</div>
-      <div style="font-size:12px;color:var(--sub)">新错字</div>
+  <div class="card" style="margin:0 12px 12px">
+    <div class="section-title">本周概览</div>
+    <div class="stat-grid">
+      <div class="stat-item">
+        <div class="emoji">📝</div>
+        <div id="en_words_count" class="num">-</div>
+        <div class="label">生词数</div>
+      </div>
+      <div class="stat-item">
+        <div class="emoji">📖</div>
+        <div id="en_articles_count" class="num">-</div>
+        <div class="label">文章数</div>
+      </div>
+      <div class="stat-item">
+        <div class="emoji">✅</div>
+        <div id="en_done_count" class="num">-</div>
+        <div class="label">已完成</div>
+      </div>
     </div>
   </div>
-</div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-  <div class="card" style="text-align:center;cursor:pointer" onclick="location.href='pending.html'">
-    <div style="font-size:40px">📋</div>
-    <div style="font-weight:700;margin-top:6px">去批改</div>
-    <div style="font-size:12px;color:var(--sub);margin-top:4px">查看待批改</div>
+  <div class="card" style="margin:0 12px 12px">
+    <div class="section-title">今日打卡</div>
+    <div id="en_today_tasks">
+      <div style="text-align:center;padding:16px;color:var(--sub);font-size:0.9rem">加载中...</div>
+    </div>
   </div>
-  <div class="card" style="text-align:center;cursor:pointer" onclick="location.href='wrongbook.html'">
-    <div style="font-size:40px">📕</div>
-    <div style="font-weight:700;margin-top:6px">错题本</div>
-    <div style="font-size:12px;color:var(--sub);margin-top:4px">查看错字</div>
-  </div>
-  <div class="card" style="text-align:center;cursor:pointer;grid-column:1/-1" onclick="location.href='weekly-plan.html'">
-    <div style="font-size:40px">📅</div>
-    <div style="font-weight:700;margin-top:6px">本周计划</div>
-    <div style="font-size:12px;color:var(--sub);margin-top:4px">AI 智能分配每日任务</div>
+
+  <div class="card" style="margin:0 12px 12px">
+    <div class="section-title">本周单词</div>
+    <div id="en_word_list" style="max-height:200px;overflow-y:auto">
+      <div style="text-align:center;padding:12px;color:var(--sub);font-size:0.85rem">暂无</div>
+    </div>
   </div>
 </div>
 
 <div class="spacer"></div>
 <nav class="tab-bar">
-  <div class="tab-item active">
-    <span class="tab-icon">🏠</span><span>首页</span>
+  <div class="tab-item active" id="tab-chinese" onclick="switchTab('chinese')">
+    <span class="tab-icon">📖</span><span>语文</span>
   </div>
-  <div class="tab-item" onclick="location.href='pending.html'">
-    <span class="tab-icon">📋</span><span>批改</span>
-  </div>
-  <div class="tab-item" onclick="location.href='wrongbook.html'">
-    <span class="tab-icon">📕</span><span>错题本</span>
+  <div class="tab-item" id="tab-english" onclick="switchTab('english')">
+    <span class="tab-icon">🇬🇧</span><span>英语</span>
   </div>
 </nav>
 
 <script>
 const API = 'http://' + location.hostname + ':8080/api';
 
-async function load() {
+function switchTab(tab) {
+  document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'english') loadEnglishTab();
+}
+
+async function loadChineseTab() {
   const [submitted, graded, wb] = await Promise.all([
     fetch(API + '/sessions?child_id=1&status=submitted').then(r=>r.json()),
     fetch(API + '/sessions?child_id=1&status=graded').then(r=>r.json()),
@@ -93,13 +174,93 @@ async function load() {
   document.getElementById('today_graded').textContent = todayGraded;
   document.getElementById('new_wrong').textContent = wb.wrongChars ? wb.wrongChars.length : 0;
 
-  const pending = submitted.length;
-  if (pending > 0) {
-    document.getElementById('pending_count').textContent = pending;
+  if (submitted.length > 0) {
+    document.getElementById('pending_count').textContent = submitted.length;
     document.getElementById('pending_alert').style.display = 'block';
   }
 }
-load();
+
+function getWeekDate() {
+  const today = new Date();
+  const day = today.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diff);
+  return monday.toISOString().slice(0, 10);
+}
+
+async function loadEnglishTab() {
+  const week = getWeekDate();
+  const today = new Date().toISOString().slice(0, 10);
+
+  try {
+    // 单词统计
+    const [wRes, aRes, schedRes, logRes] = await Promise.all([
+      fetch(API + '/english/words?week_date=' + week).then(r=>r.json()),
+      fetch(API + '/english/articles?week_date=' + week).then(r=>r.json()),
+      fetch(API + '/english/schedule?date=' + today + '&child_id=1').then(r=>r.json()),
+      fetch(API + '/english/daily-log?date=' + today + '&child_id=1').then(r=>r.json()).catch(()=>({log:[]})),
+    ]);
+
+    const words = wRes.words || [];
+    const articles = aRes.articles || [];
+    const tasks = schedRes.tasks || [];
+    const logs = logRes.log || [];
+
+    document.getElementById('en_words_count').textContent = words.length;
+    document.getElementById('en_articles_count').textContent = articles.length;
+    document.getElementById('en_done_count').textContent = logs.length;
+
+    // 今日任务列表
+    const taskTypes = [
+      { type: 'spelling', label: 'Spelling Words', cls: 'spelling' },
+      { type: 'irregular', label: 'Irregular Verbs', cls: 'irregular' },
+      { type: 'pep', label: 'PEP Words', cls: 'pep' },
+      { type: 'reading', label: '阅读打卡', cls: 'reading' },
+    ];
+    const taskMap = {};
+    tasks.forEach(t => taskMap[t.task_type] = t);
+
+    let tasksHtml = '';
+    taskTypes.forEach(t => {
+      const done = logs.some(l => l.task_type === t.type);
+      tasksHtml += `
+      <div class="task-row">
+        <div>
+          <span class="task-type-badge ${t.cls}">${t.label}</span>
+        </div>
+        <span class="${done ? 'badge-green' : 'badge-blue'}">${done ? '✓已完成' : '○待完成'}</span>
+      </div>`;
+    });
+
+    if (tasks.length === 0 && words.length === 0) {
+      tasksHtml = '<div style="text-align:center;padding:16px;color:var(--sub);font-size:0.85rem">本周暂无英语任务<br><br>发送 PDF + 图片给我配置</div>';
+    }
+    document.getElementById('en_today_tasks').innerHTML = tasksHtml;
+
+    // 单词列表
+    if (words.length > 0) {
+      const byType = { spelling: words.filter(w=>w.word_type==='spelling'), irregular: words.filter(w=>w.word_type==='irregular'), pep: words.filter(w=>w.word_type==='pep') };
+      let listHtml = '';
+      for (const [type, wlist] of Object.entries(byType)) {
+        if (wlist.length === 0) continue;
+        listHtml += `<div style="margin-bottom:10px"><span class="task-type-badge ${type}">${type}</span></div>`;
+        listHtml += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+        wlist.forEach(w => {
+          listHtml += `<span style="background:var(--bg);padding:3px 10px;border-radius:8px;font-size:0.8rem">${w.word}</span>`;
+        });
+        listHtml += '</div>';
+      }
+      document.getElementById('en_word_list').innerHTML = listHtml;
+    }
+  } catch(e) {
+    console.error(e);
+    document.getElementById('en_today_tasks').innerHTML = '<div style="text-align:center;padding:16px;color:var(--sub)">加载失败</div>';
+  }
+}
+
+// init
+loadChineseTab();
 </script>
 </body>
 </html>

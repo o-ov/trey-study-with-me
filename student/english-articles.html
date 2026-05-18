@@ -85,6 +85,8 @@ async function loadArticles() {
   const res = await fetch(API + '/english/articles?week_date=2026-05-11');
   const data = await res.json();
   const articles = data.articles || [];
+  console.log('API response:', data);
+  console.log('Articles count:', articles.length);
 
   if (articles.length === 0) {
     document.getElementById('article-list').innerHTML = `
@@ -97,7 +99,7 @@ async function loadArticles() {
   }
 
   document.getElementById('article-list').innerHTML = articles.map(a => {
-    const imgUrls = a.image_urls ? JSON.parse(a.image_urls) : [];
+    const imgUrls = Array.isArray(a.image_urls) ? a.image_urls : (a.image_urls ? JSON.parse(a.image_urls) : []);
     const preview = (a.content || '').slice(0, 60);
     return `
       <div class="article-card" onclick="openArticle(${a.id}, '${encodeURIComponent(a.title)}')">
@@ -117,17 +119,14 @@ async function openArticle(id, title) {
   const article = (data.articles || []).find(a => a.id == id);
   if (!article) return;
 
-  const imgUrls = article.image_urls ? JSON.parse(article.image_urls) : [];
+  const imgUrls = Array.isArray(article.image_urls) ? article.image_urls : (article.image_urls ? JSON.parse(article.image_urls) : []);
 
   document.getElementById('list-view').style.display = 'none';
   document.getElementById('reader-view').style.display = 'block';
   document.getElementById('reader-title-nav').textContent = article.title;
   document.getElementById('reader-content').textContent = article.content || '';
 
-  if (imgUrls.length > 0) {
-    document.getElementById('reader-image').src = '/uploads/english/' + imgUrls[0];
-    document.getElementById('reader-image').style.display = 'block';
-  }
+  document.getElementById('reader-image').style.display = 'none';
 }
 
 function closeReader() {

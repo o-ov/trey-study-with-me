@@ -1,101 +1,231 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>听写练习</title>
-  <link rel="stylesheet" href="style.css">
-  <style>
-    .step { display: none; }
-    .step.active { display: block; }
-    .char-display { min-height: 52px; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>听写练习</title>
+<link rel="stylesheet" href="style.css">
+<style>
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--bg, #f5f5f5);
+  font-family: 'Microsoft YaHei', system-ui, sans-serif;
+}
+body {
+  display: flex;
+  flex-direction: column;
+}
+/* ── 顶部栏 ── */
+.top-bar {
+  flex-shrink: 0;
+  height: 56px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border-bottom: 1px solid #eee;
+  position: relative;
+  z-index: 10;
+}
+.top-bar .back-btn {
+  font-size: 20px;
+  background: none; border: none;
+  cursor: pointer;
+  padding: 8px;
+  color: var(--text);
+  text-decoration: none;
+}
+.top-bar .progress {
+  position: absolute;
+  left: 50%; transform: translateX(-50%);
+  font-size: 15px; font-weight: 600;
+  color: var(--text);
+}
+/* ── 内容区 ── */
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  padding: 16px;
+}
+/* 米字格横向容器 */
+#grid-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+/* 每个字的容器：gridCanvas + drawCanvas 叠在一起 */
+.char-cell {
+  position: relative;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(163, 137, 102, 0.12);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.char-cell canvas {
+  display: block;
+}
+.char-cell .draw-canvas {
+  position: absolute;
+  top: 0; left: 0;
+}
+/* ── 底部 tab 栏 ── */
+.bottom-bar {
+  flex-shrink: 0;
+  height: 64px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  border-top: 1px solid #eee;
+  padding: 0 8px;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.tab-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: none; border: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--sub, #888);
+  padding: 6px 4px;
+  border-radius: 8px;
+  transition: background 0.15s;
+  min-width: 0;
+}
+.tab-btn:active { background: #f0f0f0; }
+.tab-btn .icon { font-size: 22px; line-height: 1; }
+.tab-btn.active { color: #004BFE; }
+.tab-btn.submit-btn {
+  background: #E8F5E9;
+  color: #2e7d32;
+  border-radius: 12px;
+  margin: 0 4px;
+  font-weight: 600;
+}
+.tab-btn.submit-btn .icon { color: #2e7d32; }
+.tab-btn.submit-btn.done-state {
+  background: #004BFE;
+  color: #fff;
+}
+.tab-btn.submit-btn.done-state .icon { color: #fff; }
 
-    /* 单字提示 */
-    #word_hint {
-      font-size: 14px;
-      color: var(--sub);
-      margin-top: 6px;
-      min-height: 20px;
-    }
-  </style>
+/* loading */
+#page-loading {
+  position: fixed; inset: 0;
+  background: var(--bg, #f5f5f5);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 999;
+}
+#page-loading .emoji { font-size: 48px; margin-bottom: 12px; }
+#page-loading .text { font-size: 15px; color: var(--sub, #888); }
+</style>
 </head>
 <body>
 
-<!-- Step: 练习（今日任务直达） -->
-<div id="step_practice" class="step active">
-  <div class="page-header">
-    <button class="back-btn" onclick="location.href='today.html'">←</button>
-    <span id="progress_text">听写练习</span>
-  </div>
-
-  <div class="card" style="text-align:center">
-    <div id="pinyin_show" class="pinyin-display"></div>
-    <div id="char_show" class="char-display"></div>
-    <div id="word_hint"></div>
-  </div>
-
-  <div class="card" style="text-align:center">
-    <button onclick="playTTS()" style="background:none;border:none;cursor:pointer;font-size:32px;padding:8px" title="播放发音">🔊</button>
-    <div id="gridContainer" style="display:flex;justify-content:center;align-items:center;overflow:hidden">
-      <canvas id="drawCanvas" style="display:block;width:auto;height:auto;max-width:100%"></canvas>
-    </div>
-    <div class="toolbar">
-      <button onclick="clearCanvas()" style="background:#F5F5F5;color:var(--text)">🗑️ 重写</button>
-      <button onclick="playTTS()" style="background:#FFF3E0;color:#E65100;margin-left:8px">🔊 重播</button>
-      <button onclick="handleMainAction()" style="background:#E8F5E9;color:var(--success);margin-left:8px" id="main_btn">下一个 →</button>
-    </div>
-  </div>
-
-  <div id="finish_hint" style="display:none;text-align:center;margin-top:12px" class="card">
-    <button class="btn btn-success btn-large" onclick="submitSession()">✓ 提交完成</button>
-  </div>
+<div id="page-loading">
+  <div class="emoji">📝</div>
+  <div class="text">加载中…</div>
 </div>
 
-<!-- Step: 单元选择（自由练习） -->
-<div id="step_select" class="step">
-  <div class="page-header">
-    <button class="back-btn" onclick="location.href='today.html'">←</button>
-    <span>选择练习单元</span>
-  </div>
-
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <span>勾选练习单元</span>
-      <button onclick="toggleAll()" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:13px">全选/清空</button>
-    </div>
-    <div id="unit_list" class="unit-grid"></div>
-    <div style="font-size:13px;color:var(--sub);margin:8px 0" id="select_info">已选 0 个单元，约 0 个字</div>
-    <button class="btn btn-primary btn-large" onclick="startPractice()">开始练习</button>
-  </div>
+<!-- 顶部栏 -->
+<div class="top-bar">
+  <a class="back-btn" href="today.html">←</a>
+  <span class="progress" id="progress_text">1 / 1</span>
 </div>
 
-<!-- Step: 完成 -->
-<div id="step_done" class="step">
-  <div class="done-page">
-    <div class="done-emoji">🎉</div>
-    <div class="done-title">听写完成！</div>
-    <div class="done-pts">本次获得 +5 积分</div>
-    <button class="btn btn-primary btn-large" style="margin-top:32px;max-width:260px" onclick="location.href='today.html'">
-      📅 返回任务页
-    </button>
-  </div>
+<!-- 内容区 -->
+<div class="content">
+  <div id="grid-container"></div>
+</div>
+
+<!-- 底部 tab 栏 -->
+<div class="bottom-bar">
+  <button class="tab-btn" id="btn-clear" onclick="clearAll()">
+    <span class="icon">🗑️</span>
+    <span>重写</span>
+  </button>
+  <button class="tab-btn" id="btn-eraser" onclick="eraserMode()">
+    <span class="icon">🧽</span>
+    <span>橡皮擦</span>
+  </button>
+  <button class="tab-btn" onclick="playTTS()">
+    <span class="icon">🔊</span>
+    <span>重播</span>
+  </button>
+  <button class="tab-btn submit-btn" id="main_btn" onclick="handleMainAction()">
+    <span class="icon">→</span>
+    <span>下一个</span>
+  </button>
 </div>
 
 <script>
+// ── 全局变量 ───────────────────────────────────────────────
 const API      = 'http://' + location.hostname + ':8080/api';
 const TTS_BASE = 'http://' + location.hostname + ':8082';
+const taskId   = new URLSearchParams(location.search).get('task_id');
 
-const taskId = new URLSearchParams(location.search).get('task_id');
-
-let units = [];
-let selectedUnits = new Set();
-let sessionId = null;
-let sessionKey = null;
-let words = [];
+let words      = [];
 let currentIdx = 0;
-let uploaded = [];
-let isSaving = false;
-let taskUnitName = ''; // 当前任务的课文名，用于单字提示
+let uploaded   = [];
+let isSaving   = false;
+let eraserActive = false;
+let ttsAudio   = null;
+let skipFirstPlay = true;
+
+let charCells = []; // [{ gridCanvas, drawCanvas, ctx }]
+let gridSize  = 120; // 默认，后续动态计算
+
+// ── TTS ───────────────────────────────────────────────────
+
+function initAudio() {
+  if (ttsAudio) return;
+  ttsAudio = new Audio();
+  ttsAudio.autoplay = false;
+  ttsAudio.preload = 'none';
+}
+document.addEventListener('DOMContentLoaded', initAudio);
+document.addEventListener('click', initAudio, { once: true });
+document.addEventListener('touchstart', initAudio, { once: true });
+
+async function playTTS(text) {
+  if (!text) {
+    const w = words[currentIdx];
+    text = w?.char || w?.word || '';
+    if (!text) return;
+  }
+  if (!skipFirstPlay) { skipFirstPlay = true; return; }
+  await _playTTS(text);
+}
+
+async function _playTTS(text) {
+  if (!text) return;
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 8000);
+    const resp = await fetch(TTS_BASE + '/tts?text=' + encodeURIComponent(text) + '&voice=zh', { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (!resp.ok) throw new Error('TTS failed ' + resp.status);
+    const buf = await resp.arrayBuffer();
+    if (buf.byteLength < 100) throw new Error('TTS too small');
+    const blob = new Blob([buf], { type: 'audio/mpeg' });
+    ttsAudio.src = URL.createObjectURL(blob);
+    await ttsAudio.play();
+  } catch(e) { console.error('[TTS]', e); }
+}
 
 // ── 初始化 ─────────────────────────────────────────────────
 
@@ -106,78 +236,238 @@ async function init() {
     const task = data.tasks.find(t => t.id == taskId && t.task_type === 'dictation');
     if (task && task.words) {
       words = task.words;
-      sessionKey = 'task_' + taskId + '_' + Date.now();
       uploaded = new Array(words.length).fill(false);
       currentIdx = 0;
-      taskUnitName = task.unit_name || '';
-      showStep('practice');
-      showWord(0);
+      document.getElementById('page-loading').style.display = 'none';
+      buildCells();
+      await showWord(0);
     } else {
+      document.getElementById('page-loading').style.display = 'none';
       alert('任务数据异常');
       location.href = 'today.html';
     }
   } else {
-    showStep('select');
-    loadUnits();
+    document.getElementById('page-loading').style.display = 'none';
+    location.href = 'today.html';
   }
 }
 
-// ── 今日任务练习 ───────────────────────────────────────────
+// ── 构建米字格 ─────────────────────────────────────────────
 
-function isLastWord() {
-  return currentIdx === words.length - 1;
+function buildCells() {
+  const n = getWordLen();
+  const size = calcCellSize(n);
+  gridSize = size;
+
+  const container = document.getElementById('grid-container');
+  container.innerHTML = '';
+  container.style.gap = n > 1 ? '10px' : '0';
+  charCells = [];
+
+  for (let i = 0; i < n; i++) {
+    // 外层容器
+    const cell = document.createElement('div');
+    cell.className = 'char-cell';
+    cell.style.width  = size + 'px';
+    cell.style.height = size + 'px';
+
+    // 格子线 canvas（背景层）
+    const gCanvas = document.createElement('canvas');
+    gCanvas.width = size; gCanvas.height = size;
+    cell.appendChild(gCanvas);
+
+    // 书写 canvas（前景层，透明叠在上面）
+    const dCanvas = document.createElement('canvas');
+    dCanvas.className = 'draw-canvas';
+    dCanvas.width = size; dCanvas.height = size;
+    cell.appendChild(dCanvas);
+
+    container.appendChild(cell);
+
+    // 画格子线
+    const gCtx = gCanvas.getContext('2d');
+    drawMiGrid(gCtx, size);
+
+    // 绑定书写事件
+    bindDrawEvents(dCanvas);
+
+    charCells.push({ gCanvas, dCanvas, gCtx });
+  }
 }
 
-function showWord(idx) {
-  console.log('[showWord] idx=' + idx, 'total=' + words.length);
-  currentIdx = idx;
-  const w = words[idx];
-  const last = isLastWord();
+function getWordLen() {
+  const text = (words[currentIdx]?.char || words[currentIdx]?.word || '').length;
+  return Math.min(Math.max(text || 1, 1), 4);
+}
 
-  document.getElementById('progress_text').textContent = '第 ' + (idx+1) + ' / ' + words.length + ' 字';
-  document.getElementById('char_show').textContent = '';
-  document.getElementById('pinyin_show').textContent = '';
-  document.getElementById('finish_hint').style.display = 'none';
+function calcCellSize(n) {
+  const winW = window.innerWidth;
+  const winH = window.innerHeight;
+  // 顶部56 + 底部64 + 上下padding 32 = 152
+  const availH = winH - 56 - 64 - 32;
+  const availW = winW - 32;
+  const maxByH = Math.floor(availH / 1); // 至少保证一个格子能放下
+  const maxByW = Math.floor((availW - (n - 1) * 10) / n); // 扣除间隔
+  return Math.min(maxByH, maxByW, Math.floor(Math.min(winW, winH) / 3));
+}
 
-  console.log('[showWord] calling clearCanvas');
-  clearCanvas();
+// ── 画米字格背景 ────────────────────────────────────────────
 
-  // 最后一个字 → 按钮变成"提交"
-  const btn = document.getElementById('main_btn');
-  if (last) {
-    btn.textContent = '✓ 提交';
+function drawMiGrid(ctx, size) {
+  ctx.save();
+  // 白色底
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, size, size);
+
+  // 外边框（红色实线）
+  ctx.strokeStyle = '#cd3333';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(0, 0, size, size);
+
+  // 内部十字 + 对角线（浅红虚线）
+  ctx.strokeStyle = '#eeb4b4';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([5, 5]);
+
+  // 横中线
+  ctx.beginPath(); ctx.moveTo(0, size/2); ctx.lineTo(size, size/2); ctx.stroke();
+  // 竖中线
+  ctx.beginPath(); ctx.moveTo(size/2, 0); ctx.lineTo(size/2, size); ctx.stroke();
+  // 对角线
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(size, size); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(size, 0); ctx.lineTo(0, size); ctx.stroke();
+
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+// ── 书写事件 ───────────────────────────────────────────────
+
+function bindDrawEvents(canvas) {
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#232323';
+  ctx.lineWidth = Math.max(Math.floor(gridSize * 0.05), 5);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  let drawing = false, lastX = 0, lastY = 0;
+
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return [src.clientX - r.left, src.clientY - r.top];
+  }
+
+  function start(e) {
+    e.preventDefault();
+    drawing = true;
+    [lastX, lastY] = getPos(e);
+  }
+
+  function move(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    const [x, y] = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    [lastX, lastY] = [x, y];
+  }
+
+  function stop() { drawing = false; }
+
+  canvas.addEventListener('mousedown',  start);
+  canvas.addEventListener('mousemove',  move);
+  window.addEventListener('mouseup',   stop);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove',  move,  { passive: false });
+  canvas.addEventListener('touchend',   stop);
+}
+
+// ── 橡皮擦 ──────────────────────────────────────────────────
+
+function eraserMode() {
+  eraserActive = !eraserActive;
+  charCells.forEach(({ dCanvas }) => {
+    const ctx = dCanvas.getContext('2d');
+    if (eraserActive) {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = Math.max(Math.floor(gridSize * 0.12), 15);
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = '#232323';
+      ctx.lineWidth = Math.max(Math.floor(gridSize * 0.05), 5);
+    }
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  });
+  updateEraserBtn();
+}
+
+function updateEraserBtn() {
+  const btn = document.getElementById('btn-eraser');
+  if (eraserActive) {
+    btn.classList.add('active');
     btn.style.background = '#004BFE';
     btn.style.color = '#fff';
   } else {
-    btn.textContent = '下一个 →';
-    btn.style.background = '#E8F5E9';
-    btn.style.color = 'var(--success)';
+    btn.classList.remove('active');
+    btn.style.background = '';
+    btn.style.color = '';
   }
-
-  // 单字提示：显示「XX」的Y
-  const charText = w.char || '';
-  const wordText = w.word || '';
-  const isSingle = charText.length === 1 && wordText && wordText !== charText;
-  const hintEl = document.getElementById('word_hint');
-  if (isSingle) {
-    // TTS 播「XX」的Y，提示也显示「XX」的Y
-    hintEl.textContent = '「' + wordText + '」的' + charText;
-    hintEl.style.color = '#888';
-    hintEl.style.fontSize = '14px';
-  } else {
-    hintEl.textContent = '';
-  }
-
-  // TTS：单字播「XX」的Y，多字播字
-  const ttsText = isSingle ? ('「' + wordText + '」的' + charText) : (charText || wordText || '');
-  playTTS(ttsText);
 }
 
-// ── 按钮动作（下一个 / 提交） ───────────────────────────────
+// ── 重写 ────────────────────────────────────────────────────
+
+function clearAll() {
+  eraserActive = false;
+  updateEraserBtn();
+  charCells.forEach(({ gCanvas, dCanvas, gCtx }) => {
+    const ctx = dCanvas.getContext('2d');
+    ctx.clearRect(0, 0, dCanvas.width, dCanvas.height);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = '#232323';
+    ctx.lineWidth = Math.max(Math.floor(gridSize * 0.05), 5);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  });
+}
+
+// ── 显示当前词 ──────────────────────────────────────────────
+
+async function showWord(idx) {
+  currentIdx = idx;
+  const last = currentIdx === words.length - 1;
+
+  document.getElementById('progress_text').textContent = (idx + 1) + ' / ' + words.length;
+
+  const btn = document.getElementById('main_btn');
+  if (last) {
+    btn.querySelector('span:last-child').textContent = '提交';
+    btn.querySelector('span.icon').textContent = '✓';
+    btn.classList.add('done-state');
+  } else {
+    btn.querySelector('span:last-child').textContent = '下一个';
+    btn.querySelector('span.icon').textContent = '→';
+    btn.classList.remove('done-state');
+  }
+
+  buildCells();
+
+  const w = words[idx];
+  const charText = w?.char || '';
+  const wordText = w?.word || '';
+  const isSingle = charText.length === 1 && wordText && wordText !== charText;
+  const ttsText = isSingle ? ('「' + wordText + '」的' + charText) : (charText || wordText || '');
+  await playTTS(ttsText);
+}
+
+// ── 按钮动作 ───────────────────────────────────────────────
 
 async function handleMainAction() {
   const btn = document.getElementById('main_btn');
-  if (btn.disabled) return; // 防重复点击，3秒内只能点一次
+  if (btn.disabled) return;
   btn.disabled = true;
   setTimeout(() => { btn.disabled = false; }, 3000);
 
@@ -186,232 +476,67 @@ async function handleMainAction() {
   await saveImage();
   isSaving = false;
 
-  if (isLastWord()) {
+  if (currentIdx === words.length - 1) {
     await submitSession();
   } else {
-    currentIdx++;
-    showWord(currentIdx);
+    await showWord(currentIdx + 1);
   }
 }
 
-// ── 自由练习：单元选择 ──────────────────────────────────────
-
-async function loadUnits() {
-  const data = await fetch(API + '/words/units').then(r=>r.json());
-  units = data;
-  const grid = document.getElementById('unit_list');
-  grid.innerHTML = '';
-  units.forEach(u => {
-    const div = document.createElement('div');
-    div.className = 'unit-chip';
-    div.dataset.id = u.unit_id;
-    div.textContent = u.unit_name;
-    div.onclick = () => toggleUnit(u.unit_id, div);
-    grid.appendChild(div);
-  });
-  const allWords = await fetch(API + '/words').then(r=>r.json());
-  words = allWords;
-  updateSelectInfo();
-}
-
-function toggleUnit(id, el) {
-  if (selectedUnits.has(id)) {
-    selectedUnits.delete(id);
-    el.classList.remove('selected');
-  } else {
-    selectedUnits.add(id);
-    el.classList.add('selected');
-  }
-  updateSelectInfo();
-}
-
-function toggleAll() {
-  if (selectedUnits.size === units.length) {
-    selectedUnits.clear();
-    document.querySelectorAll('.unit-chip').forEach(e=>e.classList.remove('selected'));
-  } else {
-    units.forEach(u => selectedUnits.add(u.unit_id));
-    document.querySelectorAll('.unit-chip').forEach(e=>e.classList.add('selected'));
-  }
-  updateSelectInfo();
-}
-
-function updateSelectInfo() {
-  let charCount = 0;
-  if (selectedUnits.size > 0) {
-    const selected = words.filter(w=>selectedUnits.has(w.unit_id));
-    charCount = selected.length;
-  }
-  document.getElementById('select_info').textContent =
-    '已选 ' + selectedUnits.size + ' 个单元，约 ' + charCount + ' 个字';
-}
-
-async function startPractice() {
-  if (selectedUnits.size === 0) { alert('请至少选择一个单元'); return; }
-  const selected = words.filter(w=>selectedUnits.has(w.unit_id));
-  if (selected.length === 0) { alert('所选单元没有字'); return; }
-  words = selected;
-  uploaded = new Array(words.length).fill(false);
-  sessionKey = 'free_' + Date.now();
-  currentIdx = 0;
-  showStep('practice');
-  showWord(0);
-}
-
-// ── 公共 ───────────────────────────────────────────────────
-
-function showStep(name) {
-  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
-  document.getElementById('step_' + name).classList.add('active');
-}
-
-async function playTTS(text) {
-  if (!text) return;
-  console.log('[playTTS] playing:', text);
-  try {
-    const audio = new Audio(TTS_BASE + '/tts?text=' + encodeURIComponent(text));
-    audio.onended = () => console.log('[playTTS] ended:', text);
-    audio.onerror = () => console.error('[playTTS] error:', text);
-    await audio.play();
-  } catch(e) { console.error(e); }
-}
-
-// ── 米字格 ─────────────────────────────────────────────────
-
-function getWordLen() {
-  const text = (words[currentIdx]?.char || words[currentIdx]?.word || '').length;
-  return text || 1;
-}
-
-function drawGrid() {
-  const canvas = document.getElementById('drawCanvas');
-  const ctx   = canvas.getContext('2d');
-  const n     = getWordLen();
-  const gap   = 6;
-  const containerW = canvas.parentElement.clientWidth || 300;
-  const size = Math.floor((containerW - gap * (n - 1)) / n);
-  const safeSize = Math.max(size, 60);
-  const totalW = n * safeSize + gap * (n - 1);
-  canvas.width  = totalW;
-  canvas.height = safeSize;
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, totalW, safeSize);
-  for (let i = 0; i < n; i++) {
-    const x = i * (safeSize + gap);
-    ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1.5;
-    ctx.strokeRect(x, 0, safeSize, safeSize);
-    ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 0.8; ctx.setLineDash([]);
-    ctx.beginPath(); ctx.moveTo(x, safeSize / 2); ctx.lineTo(x + safeSize, safeSize / 2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x + safeSize / 2, 0); ctx.lineTo(x + safeSize / 2, safeSize); ctx.stroke();
-    ctx.strokeStyle = '#3498db'; ctx.lineWidth = 0.6; ctx.setLineDash([4, 3]);
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + safeSize, safeSize); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x + safeSize, 0); ctx.lineTo(x, safeSize); ctx.stroke();
-    ctx.setLineDash([]);
-  }
-}
-
-function clearCanvas() {
-  console.log('[clearCanvas] called from:', new Error().stack.split('\n')[2]);
-  drawGrid();
-  const ctx = document.getElementById('drawCanvas').getContext('2d');
-  ctx.strokeStyle = '#1A1A2E';
-  ctx.lineWidth = 6;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-}
-
-// ── Canvas ─────────────────────────────────────────────────
-
-const canvas = document.getElementById('drawCanvas');
-let drawing = false, lastX=0, lastY=0;
-
-function getCtx() { return canvas.getContext('2d'); }
-
-function offset(e) {
-  const r = canvas.getBoundingClientRect();
-  return [e.clientX - r.left, e.clientY - r.top];
-}
-function touchOffset(t) {
-  const r = canvas.getBoundingClientRect();
-  return [t.clientX - r.left, t.clientY - r.top];
-}
-function draw(e) {
-  const [x,y] = offset(e);
-  const ctx = getCtx();
-  ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
-  lastX=x; lastY=y;
-}
-
-canvas.addEventListener('mousedown', e => { drawing=true; [lastX,lastY]=offset(e); });
-canvas.addEventListener('mousemove', e => { if(!drawing)return; draw(e); });
-canvas.addEventListener('mouseup',   ()=>{ drawing=false; });
-canvas.addEventListener('mouseleave',()=>{ drawing=false; });
-canvas.addEventListener('touchstart',e=>{ e.preventDefault(); drawing=true; const t=e.touches[0]; [lastX,lastY]=touchOffset(t); },{passive:false});
-canvas.addEventListener('touchmove', e=>{ e.preventDefault(); if(!drawing)return; draw(e.touches[0]); },{passive:false});
-canvas.addEventListener('touchend',  ()=>{ drawing=false; });
+// ── 保存 ───────────────────────────────────────────────────
 
 async function saveImage() {
-  const canvas2 = document.getElementById('drawCanvas');
-  const dataURL = canvas2.toDataURL('image/png');
-  const filename = sessionKey + '_' + currentIdx + '.png';
-  const blob = await (await fetch(dataURL)).blob();
-  const form = new FormData();
-  form.append('file', blob, filename);
   try {
-    const up = await fetch(API + '/upload', { method:'POST', body:form });
+    const merged = document.createElement('canvas');
+    const n = charCells.length;
+    const gap = 10;
+    merged.width  = n * gridSize + (n - 1) * gap;
+    merged.height = gridSize;
+    const mCtx = merged.getContext('2d');
+    mCtx.fillStyle = '#fff';
+    mCtx.fillRect(0, 0, merged.width, merged.height);
+
+    charCells.forEach(({ gCanvas, dCanvas }, i) => {
+      const x = i * (gridSize + gap);
+      mCtx.drawImage(gCanvas, x, 0);
+      mCtx.drawImage(dCanvas, x, 0);
+    });
+
+    const blob = await (await fetch(merged.toDataURL('image/png'))).blob();
+    const filename = 'task_' + taskId + '_' + currentIdx + '.png';
+    const form = new FormData();
+    form.append('file', blob, filename);
+
+    const up = await fetch(API + '/upload', { method: 'POST', body: form });
     const ret = await up.json();
-    console.log('[saveImage] upload ret:', ret);
     const imgPath = ret.url || '';
-    if (imgPath && sessionId) {
-      const putRes = await fetch(API + '/sessions/' + sessionId, {
-        method:'PUT',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ image_url: imgPath, char: words[currentIdx].char })
-      });
-      const putData = await putRes.json();
-      console.log('[saveImage] put ret:', putData);
-      if (!putData.ok) {
-        console.error('[saveImage] failed to update image_url for char', words[currentIdx].char);
-      } else {
+
+    if (imgPath) {
+      const sRes = await fetch(API + '/sessions?child_id=1&mode=dictation&task_id=' + taskId);
+      const sData = await sRes.json();
+      const sId = sData.session_id;
+      if (sId) {
+        await fetch(API + '/sessions/' + sId, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image_url: imgPath, char: words[currentIdx].char })
+        });
         uploaded[currentIdx] = true;
       }
-    } else {
-      console.warn('[saveImage] imgPath or sessionId missing, skipping update');
     }
-  } catch(e) { console.error('[saveImage] error:', e); }
+  } catch(e) { console.error('[saveImage]', e); }
 }
 
 async function submitSession() {
-  if (!sessionId) {
-    // 自由练习，创建 session
-    const res = await fetch(API + '/sessions', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ mode: 'dictation', unit_ids: [...selectedUnits], child_id: 1, words: words })
-    }).then(r=>r.json());
-    sessionId = res.session_id;
-  }
   const missing = uploaded.some(u => !u);
   if (missing) { alert('还有字没写完，请确保每个字都写过'); return; }
   try {
-    if (sessionId) {
-      await fetch(API + '/sessions/' + sessionId + '/submit', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ char_count: words.length })
-      });
-    }
-    if (taskId) {
-      await fetch(API + '/daily-tasks/' + taskId + '/complete', { method:'POST' });
-    }
-    showStep('done');
-  } catch(e) { alert('提交失败: ' + e); }
+    await fetch(API + '/daily-tasks/' + taskId + '/complete', { method: 'POST' });
+    location.href = 'today.html';
+  } catch(e) { location.href = 'today.html'; }
 }
 
-document.addEventListener('contextmenu', e=>e.preventDefault());
-// 去掉 resize 监听，避免滚动页面时触发 clearCanvas 清掉字迹
-// window.addEventListener('resize', () => { if (words.length > 0) clearCanvas(); });
-
+// ── 启动 ───────────────────────────────────────────────────
 init();
 </script>
 </body>

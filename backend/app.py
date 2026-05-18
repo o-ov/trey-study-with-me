@@ -23,15 +23,15 @@ os.makedirs(SESSION_DIR, exist_ok=True)
 
 # ─── 勋章种子数据（启动时保证存在） ──────────────────────────
 BADGE_DEFS = [
-    ("first_practice",       "初次练习",   "🌱", "完成第1次练习",              0),
-    ("streak_3",             "连续3天",     "🔥", "连续练习3天",               0),
-    ("perfect_10",           "十全十美",    "💯", "单次练习10字全对",           0),
-    ("neat_writer",          "整洁书写",    "✍️", "单次练习连续5字全对",         0),
-    ("wrongbook_cleared_20", "错字清道夫", "🧹", "累计复习20个错字",           0),
-    ("streak_7",             "连续7天",     "📆", "连续练习7天",               0),
-    ("hundred_perfect",      "百分达人",    "🏆", "累计100字全对",             0),
-    ("monthly_practitioner", "月度练习家", "📅", "累计练习30天",              0),
-    ("lv10",                 "全能小王",    "👑", "达到Lv10",                 0),
+    ("first_practice",       "漂移初阶",    "🌱", "完成第1次练习",              0),
+    ("streak_3",             "三日猎杀",    "🔥", "连续练习3天",               0),
+    ("perfect_10",           "精准命中",    "💯", "单次练习10字全对",           0),
+    ("neat_writer",          "机甲校准",    "✍️", "单次练习连续5字全对",         0),
+    ("wrongbook_cleared_20", "碎片清道夫", "🧹", "累计复习20个错字",           0),
+    ("streak_7",             "七日猎杀",    "📆", "连续练习7天",               0),
+    ("hundred_perfect",      "百发百中",    "🏆", "累计100字全对",             0),
+    ("monthly_practitioner", "猎人满勤",    "📅", "累计练习30天",              0),
+    ("lv10",                 "危险级",      "👑", "达到Lv10",                 0),
 ]
 
 def seed_badges():
@@ -74,14 +74,13 @@ def calc_level_from_sessions(session_count):
         return 20 + (session_count - (4 + 16 * 2)) // 3
 
 LEVEL_NAMES = {
-    1: "识字小童", 2: "书写新手", 3: "错字克星", 4: "听写达人",
-    5: "文字小博士", 6: "词语大师", 7: "书法小将",
-    8: "语文小标兵", 9: "文字小精灵", 10: "全能小王",
-    11: "勤学小将", 12: "汉字小博士", 13: "词汇小达人",
-    14: "书写小高手", 15: "听写小专家", 16: "错字终结者",
-    17: "满分小达人", 18: "连续作战小能手", 19: "词语小博士",
-    20: "全能小学霸", 21: "语文小状元", 22: "汉字小冠军",
-    23: "词汇小大师", 24: "书写小艺术家", 25: "语文小天才"
+     1: "初出茅庐",  2: "小试牛刀",  3: "江湖小侠",  4: "崭露头角",
+     5: "威震一方",  6: "小有名气",   7: "名动江湖",  8: "一方霸主",
+     9: "威名远扬",  10: "登峰造极",  11: "笑傲江湖",  12: "天下无双",
+    13: "独孤求败", 14: "超凡入圣",  15: "返璞归真",  16: "文武双全",
+    17: "一代宗师", 18: "泰山北斗",  19: "笑傲苍穹",  20: "旷世奇才",
+    21: "武林至尊", 22: "天下第一",  23: "千秋万载",  24: "唯我独尊",
+    25: "传说之巅"
 }
 
 def calc_level(points):
@@ -979,9 +978,14 @@ def api_complete_task(task_id):
     # 记录
     cur.execute("INSERT INTO daily_record (daily_task_id, child_id, completed_at) VALUES (?, 1, ?)",
                 (task_id, now))
+    # 加积分
+    cur.execute("UPDATE child SET points=points+5 WHERE id=1")
+    db.commit()
+    # 检查勋章
+    badges_added = check_and_unlock_badges(db, cur, 1)
     db.commit()
     db.close()
-    return jsonify({"success": True})
+    return jsonify({"success": True, "points_added": 5, "badges_added": badges_added})
 
 
 @app.route("/api/week-summary", methods=["GET"])
@@ -1172,6 +1176,7 @@ def api_english_schedule():
             tasks = []
             source_note = " (无配置)"
     else:
+        tasks = [dict(r) for r in rows]
         source_note = ""
 
     # 查今日英语打卡记录，标记已完成的任务
@@ -1294,6 +1299,17 @@ def api_english_schedule_post():
     return jsonify({"success": True, "id": schedule_id})
 
 
+@app.route("/api/english/schedule/<int:schedule_id>/complete", methods=["POST"])
+def api_english_schedule_complete(schedule_id):
+    """将某个 schedule 任务标记为已完成"""
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("UPDATE english_schedule SET status='completed' WHERE id=?", (schedule_id,))
+    db.commit()
+    db.close()
+    return jsonify({"success": True})
+
+
 @app.route("/api/english/daily-log", methods=["GET", "POST"])
 def api_english_daily_log():
     """查询或提交每日英语任务记录"""
@@ -1323,14 +1339,44 @@ def api_english_daily_log():
 
     db = get_db()
     cur = db.cursor()
+
+    # 记录打卡日志
     cur.execute(
         "INSERT INTO english_daily_log (child_id, date, task_type, score, total, answers) VALUES (?,?,?,?,?,?)",
         (child_id, date_str, task_type, score, total, detail if data.get("detail") else answers)
     )
-    db.commit()
     log_id = cur.lastrowid
+
+    # 任务完成加积分（英语听写/阅读各加5分）
+    points_per_task = 5
+    cur.execute("UPDATE child SET points=points+? WHERE id=?", (points_per_task, child_id))
+
+    # 如果有对应的 schedule 任务，自动标记为完成
+    # 映射前端 task_type → schedule task_type
+    type_map = {'reading': 'article', 'en_dictation': None}  # en_dictation 用 detail 里的 subtype
+    mapped = type_map.get(task_type, task_type)
+    if mapped:
+        cur.execute(
+            "UPDATE english_schedule SET status='completed' WHERE child_id=? AND date=? AND task_type=? AND status!='completed'",
+            (child_id, date_str, mapped)
+        )
+    elif task_type == 'en_dictation':
+        # en_dictation 有多个子类型，从 detail 里取
+        import json as _json
+        detail_data = _json.loads(detail) if detail else {}
+        for sub_type in ['spelling', 'irregular', 'pep']:
+            if sub_type in detail_data:
+                cur.execute(
+                    "UPDATE english_schedule SET status='completed' WHERE child_id=? AND date=? AND task_type=? AND status!='completed'",
+                    (child_id, date_str, sub_type)
+                )
+
+    # 检查是否有新勋章
+    badges_added = check_and_unlock_badges(db, cur, child_id)
+
+    db.commit()
     db.close()
-    return jsonify({"success": True, "id": log_id})
+    return jsonify({"success": True, "id": log_id, "points_added": points_per_task, "badges_added": badges_added})
 
 
 @app.route("/api/english/word-practice", methods=["GET"])
@@ -1364,16 +1410,18 @@ def api_english_wrongbook():
     db = get_db()
     cur = db.cursor()
     cur.execute("""
-        SELECT id, word_id, word, pronunciation, meaning, word_type, lesson,
-               wrong_count, last_wrong_at, reviewed_at
-        FROM english_wrongbook
-        WHERE child_id = ?
-        ORDER BY wrong_count DESC, last_wrong_at DESC
+        SELECT w.id, w.word_id, w.word, w.pronunciation, w.meaning, w.word_type, w.lesson,
+               w.wrong_count, w.last_wrong_at, w.reviewed_at,
+               COALESCE(e.pos, '') as pos
+        FROM english_wrongbook w
+        LEFT JOIN english_words e ON e.id = w.word_id
+        WHERE w.child_id = ?
+        ORDER BY w.wrong_count DESC, w.last_wrong_at DESC
     """, (child_id,))
     rows = cur.fetchall()
     db.close()
     items = [dict(zip(["id","word_id","word","pronunciation","meaning","word_type",
-                       "lesson","wrong_count","last_wrong_at","reviewed_at"], r)) for r in rows]
+                       "lesson","wrong_count","last_wrong_at","reviewed_at","pos"], r)) for r in rows]
     return jsonify({"items": items, "count": len(items)})
 
 
@@ -1439,30 +1487,14 @@ def api_english_wrongbook_clear():
 
 @app.route("/api/english/tts", methods=["GET"])
 def api_english_tts():
-    """英文单词 TTS，调用 MiniMax T2A v2"""
+    """英文单词 TTS，调用本地 edge-tts 服务"""
     text = request.args.get("text", "").strip()
     if not text:
         return jsonify({"error": "text required"}), 400
     try:
-        api_key = os.environ.get("MINIMAX_API_KEY", "")
-        if not api_key:
-            return jsonify({"error": "MINIMAX_API_KEY not set"}), 500
-        payload = {
-            "model": "speech-02-hd",
-            "text": text,
-            "stream": False,
-            "voice_setting": {"voice_id": "male-qn-qingse"}
-        }
-        req = urllib.request.Request(
-            "https://api.minimax.chat/v1/t2a_v2",
-            data=json.dumps(payload).encode(),
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            },
-            method="POST"
-        )
-        resp = urllib.request.urlopen(req, timeout=10)
+        import urllib.request
+        tts_url = "http://127.0.0.1:8082/tts?text=" + urllib.parse.quote(text) + "&voice=en"
+        resp = urllib.request.urlopen(tts_url, timeout=15)
         return resp.read(), 200, {"Content-Type": "audio/mpeg"}
     except Exception as e:
         return jsonify({"error": str(e)}), 500

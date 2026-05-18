@@ -5,6 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>小树听写</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+  @keyframes sparkle {
+    0%, 100% { box-shadow: 0 0 8px #FFD700, 0 0 16px #FFD70066, 0 0 24px #FFD70033; }
+    33%       { box-shadow: 0 0 14px #FFD700, 0 0 28px #FFD70088, 0 0 42px #FFD70055; }
+    66%       { box-shadow: 0 0 6px #FFD700, 0 0 12px #FFD70044, 0 0 18px #FFD70022; }
+  }
+  @keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position:  200% center; }
+  }
+  #today_banner {
+    display: none;
+    background: linear-gradient(135deg, #FFD700, #FFC400, #FFD700);
+    background-size: 200% auto;
+    animation: shimmer 3s ease-in-out infinite, sparkle 2s ease-in-out infinite;
+    color: #5a3800;
+    cursor: pointer;
+    border-radius: 16px;
+  }
+  .task-tag {
+    display: inline-block;
+    background: rgba(255,255,255,0.45);
+    backdrop-filter: blur(4px);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 6px;
+  }
+  .task-tag.done {
+    background: rgba(255,255,255,0.7);
+    text-decoration: line-through;
+    opacity: 0.7;
+  }
+  </style>
 </head>
 <body>
   <header style="text-align:center;padding:16px 0 8px">
@@ -12,11 +47,11 @@
     <div id="level_badge" style="font-size:14px;color:var(--sub);margin-top:4px">Lv 1 · 识字小童</div>
   </header>
 
-<div id="today_banner" class="card" style="display:none;background:linear-gradient(135deg,#4A90D9,#6BB5FF);color:#fff;cursor:pointer" onclick="location.href='today.html'">
+<div id="today_banner" class="card" style="display:none;cursor:pointer" onclick="location.href='today.html'">
   <div style="display:flex;align-items:center;justify-content:space-between">
     <div>
       <div style="font-weight:700;font-size:15px">📅 今日任务</div>
-      <div id="today_summary" style="font-size:13px;opacity:0.9;margin-top:4px">-</div>
+      <div id="today_tags" style="margin-top:6px"></div>
     </div>
     <div style="font-size:24px">→</div>
   </div>
@@ -117,38 +152,35 @@ async function load() {
     document.getElementById('progress_fill').style.width = pct + '%';
     document.getElementById('progress_text').textContent = curSess + ' / ' + nextSess + ' 练习';
 
-    // 今日任务 banner：按类型分组计数（语文 + 英语）
-    const todayTasks = todayRes && todayRes.tasks ? [...todayRes.tasks] : [];
-
-    // 合并英语 schedule 任务（当日、进行中的）
-    const todayDate = todayRes && todayRes.date ? todayRes.date : new Date().toISOString().slice(0, 10);
+    // 今日任务 banner：固定显示3个任务 tag
+    const todayDate = new Date().toISOString().slice(0, 10);
     let enTasks = [];
     try {
       const enRes = await fetch(API + '/english/schedule?child_id=1&date=' + todayDate);
       const enData = await enRes.json();
-      enTasks = (enData.tasks || []).filter(s => s.status !== 'completed');
+      enTasks = enData.tasks || [];
     } catch(e) {}
 
-    const allTasks = [...todayTasks, ...enTasks];
-    if (allTasks.length > 0) {
-      const groups = {};
-      for (const t of todayTasks) {
-        if (!groups[t.task_type]) groups[t.task_type] = { total: 0, done: 0 };
-        groups[t.task_type].total++;
-        if (t.status === 'completed') groups[t.task_type].done++;
-      }
-      for (const t of enTasks) {
-        // 英语：spelling/irregular/pep → 听写，reading → 阅读（合并同类）
-        const key = 'en_' + (t.task_type === 'reading' ? 'reading' : 'dictation');
-        if (!groups[key]) groups[key] = { total: 1, done: t.status === 'completed' ? 1 : 0 };
-        else { groups[key].total++; if (t.status === 'completed') groups[key].done++; }
-      }
-      const totalTypes = Object.keys(groups).length;
-      const doneTypes = Object.values(groups).filter(g => g.done === g.total).length;
-      const banner = document.getElementById('today_banner');
-      const summary = document.getElementById('today_summary');
+    // 固定3个 tag：英文拼写 / 不规则动词 / 阅读打卡（pep合并到拼写里）
+    const tagDefs = [
+      { key: 'spelling', label: '英文拼写', icon: '📝' },
+      { key: 'irregular', label: '不规则动词', icon: '🔄' },
+      { key: 'article', label: '阅读打卡', icon: '📖' },
+    ];
+    const banner = document.getElementById('today_banner');
+    const tagsDiv = document.getElementById('today_tags');
+    const taskMap = {};
+    enTasks.forEach(t => { taskMap[t.task_type] = t; });
+
+    const tags = tagDefs.map((def, i) => {
+      const t = taskMap[def.key];
+      const done = t && t.status === 'completed';
+      return `<span class="task-tag${done ? ' done' : ''}">${def.icon} ${def.label}</span>`;
+    });
+
+    if (tags.length > 0) {
       banner.style.display = 'block';
-      summary.textContent = doneTypes >= totalTypes ? '✅ 全部完成' : `进行中 ${doneTypes}/${totalTypes}`;
+      tagsDiv.innerHTML = tags.join('');
     }
 
     document.getElementById('wrong_count').textContent = wb.wrongChars ? wb.wrongChars.length : 0;

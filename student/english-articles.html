@@ -330,15 +330,19 @@ function getWeekDate() {
 }
 
 async function loadArticles() {
-  // 显示所有文章（来自最新批次）
-  const res = await fetch(API + '/english/articles');
+  // 显示本周文章（过滤掉上周内容）
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - today.getDay() + 1);
+  const weekDate = monday.toISOString().slice(0, 10);
+  const res = await fetch(API + '/english/articles?week_date=' + weekDate);
   const data = await res.json();
   const articles = data.articles || [];
 
   // 加载今日已完成的打卡记录
-  const today = new Date().toISOString().slice(0, 10);
+  const todayStr = today.toISOString().slice(0, 10);
   try {
-    const logRes = await fetch(API + '/english/daily-log?child_id=1&date=' + today);
+    const logRes = await fetch(API + '/english/daily-log?child_id=1&date=' + todayStr);
     const logData = await logRes.json();
     (logData.log || []).forEach(l => {
       if (l.task_type === 'reading') completedArticles.add(l.article_id);
@@ -391,7 +395,11 @@ async function openArticle(id, title) {
   currentArticleId = id;
   currentArticleTitle = title;
 
-  const res = await fetch(API + '/english/articles');
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - today.getDay() + 1);
+  const weekDate = monday.toISOString().slice(0, 10);
+  const res = await fetch(API + '/english/articles?week_date=' + weekDate);
   const data = await res.json();
   const article = (data.articles || []).find(a => a.id == id);
   if (!article) return;

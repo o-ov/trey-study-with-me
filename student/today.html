@@ -96,9 +96,9 @@ async function load() {
 
     // 语文任务
     const cnTasks = cnData.tasks || [];
-    // 英语每日任务（今天应做的）
+    // 英语每日任务（今天应做的，含已完成）
     const enSchedules = (enData.tasks || [])
-      .filter(s => s.date === cnData.date && s.status !== 'completed');
+      .filter(s => s.date === cnData.date);
 
     if (cnTasks.length === 0 && enSchedules.length === 0) {
       document.getElementById('content').style.display = 'none';
@@ -158,16 +158,22 @@ function render(cnTasks, enSchedules) {
 
   // 英语每日任务：综合听写 + 阅读，两张卡
   const hasEnSchedules = enSchedules.length > 0;
+  // 检查英语听写是否全部完成
+  const enDictTasks = enSchedules.filter(s => ['spelling','irregular','pep'].includes(s.task_type));
+  const enDictAllDone = enDictTasks.length > 0 && enDictTasks.every(s => s.status === 'completed');
+  // 检查英语阅读是否完成
+  const enReadTask = enSchedules.find(s => s.task_type === 'article');
+  const enReadDone = enReadTask ? enReadTask.status === 'completed' : false;
   if (hasEnSchedules) {
     // 英语听写：跳 english.html（内部自己组合 L30+L31+Set.3+Unit5）
     cards.push({
-      icon: '🔤', name: '英语听写', sub: '拼写·不规则动词·PEP词汇',
-      done: false, type: 'en_dictation', taskId: null, lang: 'en'
+      icon: '🔤', name: '英语听写', sub: enDictAllDone ? '已完成' : '拼写·不规则动词·PEP词汇',
+      done: enDictAllDone, type: 'en_dictation', taskId: null, lang: 'en'
     });
     // 英语阅读
     cards.push({
-      icon: '📄', name: '英语阅读', sub: '阅读理解打卡',
-      done: false, type: 'en_reading', taskId: null, lang: 'en'
+      icon: '📄', name: '英语阅读', sub: enReadDone ? '已完成' : '阅读理解打卡',
+      done: enReadDone, type: 'en_reading', taskId: null, lang: 'en'
     });
   }
 

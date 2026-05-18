@@ -129,6 +129,15 @@
       .type-card .icon { font-size: 44px; }
       .type-card .name { font-size: 16px; }
     }
+    @keyframes confetti-fall {
+      0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+    .confetti-piece {
+      position: fixed; width: 10px; height: 10px; border-radius: 2px;
+      animation: confetti-fall 2.5s ease-in forwards; pointer-events: none;
+      z-index: 9999;
+    }
   </style>
 </head>
 <body>
@@ -136,6 +145,12 @@
 <div class="page-header">
   <a href="index.html" class="back-btn">← 返回</a>
   <span style="font-weight:700">英文听写</span>
+</div>
+
+<!-- 全页 loading 遮罩 -->
+<div id="page-loading" style="position:fixed;inset:0;background:#f5f5f5;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center">
+  <div style="font-size:48px;margin-bottom:12px">📝</div>
+  <div style="font-size:15px;color:#888">加载中…</div>
 </div>
 
 <!-- Type selection -->
@@ -161,12 +176,19 @@
   <button class="start-btn" id="btn-start" onclick="startQuiz()" disabled>开始学习</button>
 </div>
 
-<audio id="tts-audio" style="display:none" preload="auto"></audio>
 <!-- Loading 遮罩 -->
 <div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(255,255,255,0.92);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px">
   <div style="font-size:48px">🔊</div>
   <div style="font-size:16px;color:#666">正在加载音频…</div>
 </div>
+<script>
+function showLoading() {
+  document.getElementById('loading-overlay').style.display = 'flex';
+}
+function hideLoading() {
+  document.getElementById('loading-overlay').style.display = 'none';
+}
+</script>
 
 <!-- Quiz mode -->
 <div id="quiz-view" class="quiz-container">
@@ -176,49 +198,64 @@
 
 <!-- Result -->
 <div id="result-view" class="result-container">
+  <div id="fireworks-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:9998"></div>
   <div class="result-icon" id="result-icon">🏆</div>
   <div class="result-score" id="result-score"></div>
   <div class="result-detail" id="result-detail"></div>
+  <div id="streak-display" style="display:none;margin:12px auto 0;font-size:18px;font-weight:700;color:#F59E0B;text-align:center"></div>
   <div class="result-actions">
     <button class="result-back" onclick="location.href='index.html'">返回首页</button>
     <button class="result-retry" onclick="restartQuiz()">再来一次</button>
   </div>
 </div>
 
-<nav class="nav-bar">
-  <a href="index.html" class="nav-item active"><span class="nav-icon">🏠</span>首页</a>
-  <a href="today.html" class="nav-item"><span class="nav-icon">📅</span>今日</a>
-  <a href="profile.html" class="nav-item"><span class="nav-icon">👤</span>我的</a>
-</nav>
+
 
 <script>
 const API = 'http://' + location.hostname + ':8080/api';
+const TTS_BASE = 'http://' + location.hostname + ':8082';
 
 let currentType = null;
 let allWords = { spelling: [], irregular: [], pep: [] };
 let quizWords = [];
 let currentIdx = 0;
 let correctCount = 0;
+let currentStreak = 0;
+let maxStreak = 0;
 let wrongIds = new Set();
+let scheduleMap = {}; // task_type -> schedule_id
 
 // ── Load data ──────────────────────────────────────────────
 async function loadWords() {
-  const res = await Promise.all([
-    fetch(API + '/english/words?week_date=2026-05-11&type=spelling').then(r => r.json()),
-    fetch(API + '/english/words?week_date=2026-05-11&type=irregular').then(r => r.json()),
-    fetch(API + '/english/words?week_date=2026-05-11&type=pep').then(r => r.json()),
-  ]);
-  allWords = {
-    spelling: (res[0].words || []).map(w => ({ ...w, _type: 'spelling' })),
-    irregular: (res[1].words || []).map(w => ({ ...w, _type: 'irregular' })),
-    pep: (res[2].words || []).map(w => ({ ...w, _type: 'pep' })),
-  };
-  document.getElementById('type-spelling').querySelector('.desc').textContent =
-    `${allWords.spelling.length} 词 · 听写/意思/词性`;
-  document.getElementById('type-irregular').querySelector('.desc').textContent =
-    `${allWords.irregular.length} 词 · 动词变形`;
-  document.getElementById('type-pep').querySelector('.desc').textContent =
-    `${allWords.pep.length} 词 · 听写/意思`;
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const [spellingRes, irregularRes, pepRes, schedRes] = await Promise.all([
+      fetch(API + '/english/words?type=spelling').then(r => r.json()),
+      fetch(API + '/english/words?type=irregular').then(r => r.json()),
+      fetch(API + '/english/words?type=pep').then(r => r.json()),
+      fetch(API + '/english/schedule?child_id=1&date=' + today).then(r => r.json()),
+    ]);
+    allWords = {
+      spelling: (spellingRes.words || []).map(w => ({ ...w, _type: 'spelling' })),
+      irregular: (irregularRes.words || []).map(w => ({ ...w, _type: 'irregular' })),
+      pep: (pepRes.words || []).map(w => ({ ...w, _type: 'pep' })),
+    };
+    scheduleMap = {};
+    for (const s of (schedRes.tasks || [])) {
+      scheduleMap[s.task_type] = s.id;
+    }
+    document.getElementById('type-spelling').querySelector('.desc').textContent =
+      `${allWords.spelling.length} 词 · 听写/意思/词性`;
+    document.getElementById('type-irregular').querySelector('.desc').textContent =
+      `${allWords.irregular.length} 词 · 动词变形`;
+    document.getElementById('type-pep').querySelector('.desc').textContent =
+      `${allWords.pep.length} 词 · 听写/意思`;
+  } catch(e) {
+    console.error('[loadWords]', e);
+    document.getElementById('type-spelling').querySelector('.desc').textContent = '加载失败';
+    document.getElementById('type-irregular').querySelector('.desc').textContent = '加载失败';
+    document.getElementById('type-pep').querySelector('.desc').textContent = '加载失败';
+  }
 }
 
 function selectType(type) {
@@ -236,6 +273,8 @@ function startQuiz() {
   currentIdx = 0;
   correctCount = 0;
   wrongIds.clear();
+  currentStreak = 0;
+  maxStreak = 0;
   document.getElementById('type-view').style.display = 'none';
   document.getElementById('quiz-view').style.display = 'block';
   document.getElementById('result-view').style.display = 'none';
@@ -245,22 +284,16 @@ function startQuiz() {
 function showWord() {
   const w = quizWords[currentIdx];
   const total = quizWords.length;
+  console.log('[showWord] idx:', currentIdx, 'word:', w?.word);
   document.getElementById('quiz-progress').textContent = `${currentIdx + 1} / ${total}`;
   if (currentType === 'spelling') showSpelling(w);
   else if (currentType === 'irregular') showIrregular(w);
   else showPEP(w);
-  // 自动播放 + 预加载下一词
-  const word = w.word;
-  setTimeout(() => {
-    playWord(word);
-    if (currentIdx + 1 < quizWords.length) {
-      preloadWord(quizWords[currentIdx + 1].word);
-    }
-  }, 100);
 }
 
 // ── Spelling: all in one page ───────────────────────────────
 function showSpelling(w) {
+  console.log('[showSpelling] word:', w.word);
   const meaningChoices = buildMeaningChoices(w, 'spelling');
   const posChoices = buildPOSChoices(w);
   const html = `
@@ -289,9 +322,10 @@ function showSpelling(w) {
   `;
   document.getElementById('word-area').innerHTML = html;
   setTimeout(() => {
+    const el = document.getElementById('spell-input');
+    if (el) el.focus();
     playWord(w.word);
-    document.getElementById('spell-input').focus();
-  }, 200);
+  }, 150);
   window._selectedMeaning = null;
   window._selectedPOS = null;
   window._currentWord = w;
@@ -344,8 +378,12 @@ function submitSpelling() {
   });
 
   const allOk = spellOk && meaningOk && posOk;
-  if (allOk) correctCount++;
-  else {
+  if (allOk) {
+    correctCount++;
+    currentStreak++;
+    if (currentStreak > maxStreak) maxStreak = currentStreak;
+  } else {
+    currentStreak = 0;
     wrongIds.add(w.id);
     recordWrongbook(w, spellVal);
   }
@@ -402,9 +440,10 @@ function showPEP(w) {
   `;
   document.getElementById('word-area').innerHTML = html;
   setTimeout(() => {
+    const el = document.getElementById('spell-input');
+    if (el) el.focus();
     playWord(w.word);
-    document.getElementById('spell-input').focus();
-  }, 200);
+  }, 150);
   window._selectedMeaning = null;
   window._currentWord = w;
 }
@@ -442,8 +481,12 @@ function submitPEP() {
   });
 
   const allOk = spellOk && meaningOk;
-  if (allOk) correctCount++;
-  else {
+  if (allOk) {
+    correctCount++;
+    currentStreak++;
+    if (currentStreak > maxStreak) maxStreak = currentStreak;
+  } else {
+    currentStreak = 0;
     wrongIds.add(w.id);
     recordWrongbook(w, spellVal);
   }
@@ -496,8 +539,11 @@ function submitIrregular(correctPast) {
   if (!ok) {
     wrongIds.add(window._currentWord.id);
     recordWrongbook(window._currentWord, userVal);
+    currentStreak = 0;
   } else {
     correctCount++;
+    currentStreak++;
+    if (currentStreak > maxStreak) maxStreak = currentStreak;
   }
   document.getElementById('feedback-area').innerHTML = `
     <div class="feedback-bar">
@@ -510,22 +556,43 @@ function submitIrregular(correctPast) {
 }
 
 // ── Shared helpers ─────────────────────────────────────────
-function playWord(word) {
-  const audio = document.getElementById('tts-audio');
-  const overlay = document.getElementById('loading-overlay');
-  overlay.style.display = 'flex';
-  audio.src = API + '/english/tts?text=' + encodeURIComponent(word);
-  audio.currentTime = 0;
-  const hide = () => { overlay.style.display = 'none'; audio.removeEventListener('canplaythrough', hide); };
-  audio.addEventListener('canplaythrough', hide);
-  audio.play().catch(() => {});
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
 }
 
-// 预加载下一个词的音频
-function preloadWord(word) {
-  const audio = document.getElementById('tts-audio');
-  audio.src = API + '/english/tts?text=' + encodeURIComponent(word);
+function playWord(word) {
+  showLoading();
+  fetch(TTS_BASE + '/tts?text=' + encodeURIComponent(word) + '&voice=en')
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.arrayBuffer();
+    })
+    .then(buf => {
+      const ctx = getAudioCtx();
+      return ctx.decodeAudioData(buf).then(audioBuffer => ({ ctx, audioBuffer }));
+    })
+    .then(({ ctx, audioBuffer }) => {
+      hideLoading();
+      const src = ctx.createBufferSource();
+      src.buffer = audioBuffer;
+      src.connect(ctx.destination);
+      src.start(0);
+    })
+    .catch(e => {
+      hideLoading();
+      console.error('[TTS play error]', e);
+    });
 }
+
+// 预加载已取消
+// function preloadWord(word) {
+//   const audio = document.getElementById('tts-audio');
+//   audio.src = API + '/english/tts?text=' + encodeURIComponent(word);
+//   audio.load();
+// }
 
 function toNextWord() {
   currentIdx++;
@@ -542,14 +609,24 @@ function showResult() {
   document.getElementById('result-detail').textContent = `答对 ${correctCount} 题（共 ${quizWords.length} 词）`;
   document.getElementById('result-icon').textContent = pct >= 90 ? '🏆' : pct >= 70 ? '👍' : '💪';
 
-  // 记录打卡
+  // 连对展示
+  const streakEl = document.getElementById('streak-display');
+  if (maxStreak >= 3) {
+    streakEl.style.display = 'block';
+    streakEl.textContent = '🔥 连续答对 ' + maxStreak + ' 题！';
+    launchFireworks(maxStreak);
+  } else {
+    streakEl.style.display = 'none';
+  }
+
+  // 记录打卡并获取积分奖励
   const today = new Date().toISOString().slice(0, 10);
-  // detail 里存各阶段成绩，下次 POST 时合并
   const newDetail = {};
   newDetail[currentType] = correctCount;
   const existing = window._enLogDetail || {};
   const merged = { ...existing, ...newDetail };
   window._enLogDetail = merged;
+
   fetch(API + '/english/daily-log', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -561,7 +638,55 @@ function showResult() {
       total: quizWords.length,
       detail: JSON.stringify(merged)
     })
+  }).then(r => r.json()).then(data => {
+    if (data.points_added) {
+      showPointsAward(data.points_added, data.badges_added);
+    }
   }).catch(() => {});
+
+  // 标记 schedule 任务完成（后端已自动处理，这里保留以防万一）
+  const schedId = scheduleMap[currentType];
+  if (schedId) {
+    fetch(API + '/english/schedule/' + schedId + '/complete', { method: 'POST' }).catch(() => {});
+  }
+}
+
+function showPointsAward(points, badges) {
+  let html = `<div class="points-award">+${points} 积分</div>`;
+  if (badges && badges.length > 0) {
+    html += `<div class="badge-award">🎉 新勋章：${badges.join('、')}</div>`;
+  }
+  const el = document.createElement('div');
+  el.innerHTML = html;
+  el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;text-align:center;';
+  document.body.appendChild(el);
+  // 动画淡出
+  [el.querySelector('.points-award'), el.querySelector('.badge-award')].filter(Boolean).forEach(e => {
+    e.style.animation = 'none';
+    e.offsetHeight;
+    e.style.animation = 'points-pop 2s ease-out forwards';
+  });
+  setTimeout(() => el.remove(), 2500);
+}
+
+function launchFireworks(streak) {
+  const count = Math.min(6, 3 + Math.floor((streak - 3) / 2));
+  const colors = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#C77DFF','#FF9F1C'];
+  const emojis = ['🎉','🎆','✨','🌟','💫','🔥'];
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.textContent = emojis[i % emojis.length];
+      piece.style.left = (10 + Math.random() * 80) + 'vw';
+      piece.style.top = (10 + Math.random() * 30) + 'vh';
+      piece.style.fontSize = (20 + Math.random() * 16) + 'px';
+      piece.style.animationDuration = (2 + Math.random() * 1.5) + 's';
+      piece.style.color = colors[Math.floor(Math.random() * colors.length)];
+      document.body.appendChild(piece);
+      setTimeout(() => piece.remove(), 4000);
+    }, i * 250);
+  }
 }
 
 function restartQuiz() {
@@ -585,6 +710,7 @@ function recordWrongbook(w, userAnswer) {
 }
 
 loadWords().then(() => {
+  document.getElementById('page-loading').style.display = 'none';
   const params = new URLSearchParams(location.search);
   const autoType = params.get('type');
   if (autoType && ['spelling', 'irregular', 'pep'].includes(autoType)) {

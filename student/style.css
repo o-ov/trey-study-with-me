@@ -170,9 +170,7 @@ body {
 }
 #drawCanvas {
   display: block;
-  width: 100%;
   max-width: 480px;
-  height: 200px;
   background: #fff;
   border-radius: 12px;
   border: 2px solid #DDD;
@@ -274,4 +272,27 @@ body {
     max-width: 100%;
     bottom: env(safe-area-inset-bottom, 0);
   }
+}
+
+/* 积分弹出动画 */
+@keyframes points-pop {
+  0%   { opacity: 0; transform: translateY(20px) scale(0.8); }
+  20%  { opacity: 1; transform: translateY(0) scale(1.1); }
+  60%  { transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-30px) scale(0.9); }
+}
+.points-award {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #FFD800;
+  text-shadow: 0 0 20px #FF8C00, 0 2px 4px rgba(0,0,0,0.5);
+  margin-bottom: 0.5rem;
+}
+.badge-award {
+  font-size: 1rem;
+  color: #fff;
+  background: linear-gradient(135deg, #004BFE, #6B8FFF);
+  border-radius: 12px;
+  padding: 0.4rem 1rem;
+  display: inline-block;
 }

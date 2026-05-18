@@ -170,6 +170,7 @@ async function loadWrongbook() {
       </div>
       <div class="word-meta">
         <span class="tag tag-type">${item.word_type || ''}</span>
+        ${item.pos ? `<span class="tag tag-lesson">${item.pos}</span>` : ''}
         <span class="tag tag-lesson">${item.lesson || ''}</span>
         <span class="tag tag-wrong">错${item.wrong_count}次</span>
       </div>

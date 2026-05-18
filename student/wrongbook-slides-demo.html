@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>错题小超人 ✨ 小树复习</title>
+<style>
+:root {
+  --bg: #0a1628;
+  --dark: #0d1f3c;
+  --card-bg: #112240;
+  --accent: #64ffda;
+  --accent2: #ffd700;
+  --pink: #ff6eb4;
+  --blue: #78e8fa;
+  --purple: #c792ea;
+  --green: #9ece6a;
+  --yellow: #e0af68;
+  --text: #e6f1ff;
+  --text-dim: #8892a4;
+  --white: #ffffff;
+  --radius: 20px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── Slide system ──────────────────────────────── */
+.slide {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 24px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+.slide.active { opacity: 1; pointer-events: all; }
+
+/* ── Progress bar ─────────────────────────────── */
+.progress-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: 5px; background: rgba(255,255,255,0.08); z-index: 200;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--purple));
+  transition: width 0.5s ease;
+}
+.page-num {
+  position: fixed; bottom: 14px; right: 18px;
+  font-size: 0.8rem; color: var(--text-dim); z-index: 201;
+}
+.nav-hint {
+  position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+  font-size: 0.7rem; color: var(--text-dim); z-index: 201; letter-spacing: 0.05em;
+}
+
+/* ── Stars background ─────────────────────────── */
+.stars {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse at 20% 50%, #1a2a6c22 0%, transparent 50%),
+              radial-gradient(ellipse at 80% 20%, #b21f1f11 0%, transparent 40%);
+}
+.star {
+  position: absolute; background: white; border-radius: 50%;
+  animation: twinkle 3s ease-in-out infinite;
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.4); }
+}
+
+/* ══════════════════════════════════════════════════
+   T1 · 欢迎页 Christmas Tree
+══════════════════════════════════════════════════ */
+.t1-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background: radial-gradient(ellipse at 50% 60%, #0d2a1a 0%, #0a1628 70%);
+}
+
+/* 雪花 */
+.snowflake {
+  position: absolute; color: white; opacity: 0.6;
+  animation: snowfall linear infinite; font-size: 1rem;
+  pointer-events: none;
+}
+@keyframes snowfall {
+  0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+}
+
+/* 圣诞树 */
+.tree-container {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column; align-items: center;
+  animation: treeSway 4s ease-in-out infinite;
+}
+@keyframes treeSway {
+  0%, 100% { transform: rotate(-0.5deg); }
+  50% { transform: rotate(0.5deg); }
+}
+
+.tree-star {
+  font-size: 2.2rem;
+  animation: starPulse 1.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px #ffd700);
+  margin-bottom: -6px;
+}
+@keyframes starPulse {
+  0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 8px #ffd700); }
+  50% { transform: scale(1.2) rotate(15deg); filter: drop-shadow(0 0 20px #ffd700); }
+}
+
+.tree-layer {
+  display: flex; flex-direction: column; align-items: center;
+}
+.tree-triangle {
+  width: 0; height: 0;
+  border-style: solid;
+}
+.tree-t1 {
+  border-width: 0 55px 90px 55px;
+  border-color: transparent transparent #1a7a3a transparent;
+  position: relative; left: 6px;
+}
+.tree-t2 {
+  border-width: 0 75px 100px 75px;
+  border-color: transparent transparent #228b22 transparent;
+}
+.tree-t3 {
+  border-width: 0 95px 115px 95px;
+  border-color: transparent transparent #2e8b2e transparent;
+}
+.tree-trunk {
+  width: 30px; height: 30px;
+  background: #8b4513;
+  border-radius: 0 0 4px 4px;
+}
+
+.tree-lights {
+  position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none;
+}
+.tree-light {
+  position: absolute; font-size: 0.9rem;
+  animation: lightBlink 1.5s ease-in-out infinite;
+}
+@keyframes lightBlink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.7); }
+}
+
+.tree-ornament {
+  position: absolute;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  animation: ornamentSwing 3s ease-in-out infinite;
+}
+@keyframes ornamentSwing {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(10deg); }
+}
+
+.t1-title {
+  font-size: clamp(1.8rem, 6vw, 2.8rem);
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent), var(--green));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin: 20px 0 6px; text-align: center; z-index: 2;
+}
+.t1-subtitle {
+  font-size: clamp(0.9rem, 3vw, 1.1rem);
+  color: var(--text-dim); text-align: center; z-index: 2;
+  animation: fadeInUp 1s ease 0.5s both;
+}
+.t1-btn {
+  margin-top: 28px; z-index: 2;
+  display: inline-block; background: var(--accent); color: #0a1628;
+  border: none; border-radius: 50px; padding: 14px 40px;
+  font-size: 1.05rem; font-weight: 700; cursor: pointer;
+  box-shadow: 0 0 24px rgba(100,255,218,0.35);
+  animation: fadeInUp 1s ease 0.8s both, btnGlow 2s ease-in-out infinite 1.8s;
+  transition: transform 0.15s;
+}
+.t1-btn:active { transform: scale(0.96); }
+@keyframes btnGlow {
+  0%, 100% { box-shadow: 0 0 16px rgba(100,255,218,0.3); }
+  50% { box-shadow: 0 0 32px rgba(100,255,218,0.6); }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ══════════════════════════════════════════════════
+   T2 · 任务概览 擎天柱机器人
+══════════════════════════════════════════════════ */
+.t2-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background: radial-gradient(ellipse at 50% 40%, #1a0a2e 0%, #0a1628 70%);
+}
+
+/* ── 擎天柱 · 主体 ── */
+.robot-container {
+  position: relative; z-index: 2; text-align: center;
+}
+
+/* 主体头盔 — 红蓝经典配色 */
+.robot-head {
+  width: 160px; height: 185px;
+  margin: 0 auto;
+  position: relative;
+  animation: robotFloat 3s ease-in-out infinite;
+}
+@keyframes robotFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* 头顶红色主块 */
+.robot-helmet-top {
+  width: 120px; height: 70px;
+  background: linear-gradient(160deg, #d62828 0%, #a01a1a 60%, #7a1010 100%);
+  border-radius: 18px 18px 8px 8px;
+  margin: 0 auto;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(214,40,40,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+/* 头顶蓝色V纹 */
+.robot-helmet-top::before {
+  content: '';
+  position: absolute;
+  width: 60px; height: 30px;
+  background: linear-gradient(180deg, #1a4aba 0%, #0a2a8a 100%);
+  top: 0; left: 50%; transform: translateX(-50%);
+  clip-path: polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%);
+}
+
+/* 头顶两侧蓝色块 */
+.robot-helmet-side-left,
+.robot-helmet-side-right {
+  position: absolute;
+  width: 20px; height: 50px;
+  background: linear-gradient(180deg, #1a4aba 0%, #0a2a8a 100%);
+  top: 20px;
+  border-radius: 4px;
+}
+.robot-helmet-side-left { left: -12px; }
+.robot-helmet-side-right { right: -12px; }
+
+/* 面部区域 */
+.robot-face {
+  width: 120px; height: 115px;
+  background: linear-gradient(180deg, #c02828 0%, #901010 100%);
+  margin: -2px auto 0;
+  border-radius: 8px 8px 20px 20px;
+  position: relative;
+  box-shadow: 0 4px 16px rgba(160,20,20,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-start;
+  padding-top: 12px; gap: 8px;
+}
+
+/* 眼部 — 蓝色发光眼 */
+.robot-eyes {
+  display: flex; gap: 18px;
+}
+.robot-eye {
+  width: 26px; height: 26px;
+  background: linear-gradient(135deg, #3a9bff 0%, #1a5fcf 100%);
+  border-radius: 50%;
+  box-shadow: 0 0 14px #3a9bff, 0 0 28px rgba(58,155,255,0.5), inset 0 0 6px rgba(255,255,255,0.4);
+  animation: optimusEyeGlow 2s ease-in-out infinite;
+  position: relative;
+}
+/* 眼角细节 */
+.robot-eye::before {
+  content: '';
+  position: absolute;
+  width: 8px; height: 3px;
+  background: rgba(255,255,255,0.6);
+  top: 5px; right: 4px;
+  border-radius: 2px;
+}
+.robot-eye.left { animation-delay: 0s; }
+.robot-eye.right { animation-delay: 0.3s; }
+@keyframes optimusEyeGlow {
+  0%, 100% { box-shadow: 0 0 14px #3a9bff, 0 0 28px rgba(58,155,255,0.5), inset 0 0 6px rgba(255,255,255,0.4); }
+  50% { box-shadow: 0 0 22px #5aafff, 0 0 40px rgba(58,155,255,0.7), inset 0 0 10px rgba(255,255,255,0.6); }
+}
+
+/* 面罩 / 嘴部 */
+.robot-mouth {
+  width: 70px; height: 36px;
+  background: linear-gradient(180deg, #1a1a2e 0%, #0d0d1a 100%);
+  border-radius: 6px;
+  border: 1.5px solid #2a2a4a;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  margin-top: 4px;
+}
+/* 嘴部散热格栅 */
+.robot-mouth::before {
+  content: '';
+  position: absolute;
+  width: 50px; height: 18px;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(58,155,255,0.15) 3px,
+    rgba(58,155,255,0.15) 4px
+  );
+}
+.robot-mouth-text {
+  font-size: 0.65rem; color: #3a9bff;
+  font-family: monospace; letter-spacing: 0.08em;
+  animation: mouthBlink 1.2s steps(1) infinite;
+  position: relative; z-index: 1;
+}
+@keyframes mouthBlink { 50% { opacity: 0; } }
+
+/* 肩部 — 蓝色肩甲 */
+.robot-shoulders {
+  display: flex; justify-content: center; gap: 0;
+  margin-top: -8px;
+}
+.robot-shoulder {
+  width: 36px; height: 28px;
+  background: linear-gradient(180deg, #1a4aba 0%, #0a2a8a 100%);
+  border-radius: 6px 6px 10px 10px;
+  box-shadow: 0 2px 10px rgba(26,74,186,0.5);
+}
+.robot-shoulder.left { transform: translateX(44px); }
+.robot-shoulder.right { transform: translateX(-44px); }
+
+/* Autobot 标志 */
+.autobot-logo {
+  width: 28px; height: 28px;
+  margin: 12px auto 0;
+  position: relative;
+}
+/* 简化A标志：三角形 */
+.autobot-logo::before {
+  content: '';
+  position: absolute;
+  left: 50%; top: 0;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 20px solid var(--accent);
+  filter: drop-shadow(0 0 4px var(--accent));
+}
+.autobot-logo::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 12px;
+  transform: translateX(-50%);
+  width: 14px; height: 4px;
+  background: var(--accent);
+  border-radius: 2px;
+  filter: drop-shadow(0 0 4px var(--accent));
+}
+
+/* 能量块 */
+.energy-container { margin-top: 24px; z-index: 2; text-align: center; }
+.energy-label { font-size: 0.9rem; color: var(--text-dim); margin-bottom: 10px; }
+.energy-grid { display: flex; justify-content: center; gap: 8px; }
+.energy-block {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, var(--accent2), #ffaa00);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem;
+  animation: energyGlow 2s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(255,215,0,0.4);
+}
+.energy-block:nth-child(1) { animation-delay: 0s; }
+.energy-block:nth-child(2) { animation-delay: 0.15s; }
+.energy-block:nth-child(3) { animation-delay: 0.3s; }
+.energy-block:nth-child(4) { animation-delay: 0.45s; }
+.energy-block:nth-child(5) { animation-delay: 0.6s; }
+@keyframes energyGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(255,215,0,0.3); transform: scale(1); }
+  50% { box-shadow: 0 0 20px rgba(255,215,0,0.7); transform: scale(1.1); }
+}
+
+/* 任务描述 */
+.task-desc {
+  margin-top: 20px; font-size: clamp(0.9rem, 3vw, 1.1rem);
+  color: var(--text-dim); z-index: 2;
+}
+.task-desc strong { color: var(--accent); font-size: 1.3em; }
+.t2-go-btn {
+  margin-top: 24px; z-index: 2;
+  display: inline-block; background: linear-gradient(135deg, var(--purple), var(--pink));
+  color: white; border: none; border-radius: 50px;
+  padding: 14px 40px; font-size: 1.05rem; font-weight: 700; cursor: pointer;
+  box-shadow: 0 4px 20px rgba(199,146,234,0.35);
+  transition: transform 0.15s;
+  animation: fadeInUp 1s ease 0.6s both;
+}
+.t2-go-btn:active { transform: scale(0.96); }
+
+/* ══════════════════════════════════════════════════
+   T3 · 语文认字 米字格
+══════════════════════════════════════════════════ */
+.t3-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background: #f5f0e8;
+}
+.migu-grid-bg {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.migu-box {
+  width: min(70vw, 70vh, 320px);
+  height: min(70vw, 70vh, 320px);
+  position: relative;
+}
+.migu-box::before,
+.migu-box::after {
+  content: '';
+  position: absolute; background: #c8d8e8;
+}
+.migu-box::before {
+  width: 100%; height: 1px; top: 50%; left: 0;
+}
+.migu-box::after {
+  width: 1px; height: 100%; left: 50%; top: 0;
+}
+.migu-diag {
+  position: absolute; width: 70.7%; height: 1px;
+  background: #d8e8f0; top: 50%; left: 15%;
+  transform-origin: center;
+}
+.migu-diag:nth-child(1) { transform: rotate(45deg); }
+.migu-diag:nth-child(2) { transform: rotate(-45deg); }
+
+.char-display {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 100%; height: 100%;
+}
+.char-pinyin {
+  position: absolute; top: 18%;
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  color: #5a8a9a; font-weight: 600; letter-spacing: 0.15em;
+}
+.char-main {
+  font-size: clamp(5rem, 22vw, 10rem);
+  font-weight: 800;
+  color: #2c3e50;
+  line-height: 1;
+  text-shadow: 2px 4px 0 rgba(0,0,0,0.08);
+}
+.char-word-label {
+  position: absolute; bottom: 18%;
+  font-size: clamp(0.75rem, 2.5vw, 0.9rem);
+  color: #8aa8b8; letter-spacing: 0.1em;
+}
+.t3-nav {
+  position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 10px; z-index: 10;
+}
+.t3-nav-btn {
+  background: rgba(0,0,0,0.15); color: #555;
+  border: none; border-radius: 50%; width: 44px; height: 44px;
+  font-size: 1.2rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.t3-nav-btn:active { background: rgba(0,0,0,0.25); }
+.t3-progress {
+  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  font-size: 0.75rem; color: #8aa8b8; z-index: 10;
+}
+
+/* ══════════════════════════════════════════════════
+   T4 · 英语单词
+══════════════════════════════════════════════════ */
+.t4-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background: linear-gradient(160deg, #0d1f3c 0%, #1a2a4a 100%);
+}
+.t4-card {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 24px;
+  padding: 32px 28px;
+  width: 100%; max-width: 520px;
+  position: relative; z-index: 2;
+}
+.t4-word-row {
+  display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px;
+}
+.t4-word {
+  font-size: clamp(2.2rem, 8vw, 3.2rem);
+  font-weight: 800; color: var(--white);
+  font-family: 'Georgia', serif; line-height: 1.1;
+  flex: 1;
+}
+.t4-pronunciation {
+  font-size: 0.85rem; color: var(--accent); margin-top: 6px;
+  opacity: 0.8; font-family: monospace;
+}
+.t4-tts-btn {
+  background: rgba(100,255,218,0.12);
+  border: 1.5px solid var(--accent);
+  border-radius: 14px;
+  padding: 8px 14px;
+  color: var(--accent); font-size: 1.1rem; cursor: pointer;
+  transition: all 0.15s;
+  display: flex; align-items: center; gap: 4px;
+  flex-shrink: 0; margin-top: 2px;
+}
+.t4-tts-btn:active { background: rgba(100,255,218,0.25); transform: scale(0.95); }
+.t4-tts-btn.playing {
+  animation: ttsPulse 0.8s ease-in-out infinite;
+}
+@keyframes ttsPulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(100,255,218,0); }
+  50% { box-shadow: 0 0 16px rgba(100,255,218,0.4); }
+}
+.t4-meaning-pos {
+  margin-bottom: 20px;
+}
+.t4-pos {
+  font-size: 0.8rem; color: var(--text-dim);
+  background: rgba(255,255,255,0.08);
+  padding: 2px 10px; border-radius: 20px;
+  display: inline-block;
+}
+.t4-divider {
+  height: 1px; background: rgba(255,255,255,0.08); margin: 16px 0;
+}
+.t4-reveal-area {
+  min-height: 140px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.05);
+  border: 2px dashed rgba(255,255,255,0.15);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.25s;
+  position: relative; overflow: hidden;
+}
+.t4-reveal-area:active { transform: scale(0.98); }
+.t4-reveal-hint {
+  font-size: clamp(0.9rem, 3vw, 1.05rem);
+  color: var(--text-dim); font-weight: 600;
+  pointer-events: none;
+}
+.t4-meaning-hidden {
+  font-size: clamp(1.3rem, 5vw, 1.7rem);
+  font-weight: 700; color: var(--yellow);
+  opacity: 0; transform: scale(0.8);
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.t4-reveal-area.revealed {
+  border-color: var(--yellow);
+  background: rgba(255,215,0,0.08);
+}
+.t4-reveal-area.revealed .t4-reveal-hint { opacity: 0; }
+.t4-reveal-area.revealed .t4-meaning-hidden {
+  opacity: 1; transform: scale(1);
+}
+
+/* ══════════════════════════════════════════════════
+   T5 · 不规则动词
+══════════════════════════════════════════════════ */
+.t5-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background: linear-gradient(160deg, #1a0a2e 0%, #0d1f3c 100%);
+}
+.t5-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(199,146,234,0.2);
+  border-radius: 24px;
+  padding: 28px 24px;
+  width: 100%; max-width: 520px;
+  position: relative; z-index: 2;
+}
+.t5-word-row {
+  display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px;
+}
+.t5-word {
+  font-size: clamp(1.8rem, 6vw, 2.6rem); font-weight: 800;
+  color: var(--white); font-family: 'Georgia', serif;
+  flex: 1; line-height: 1.1;
+}
+.t5-pronunciation { font-size: 0.8rem; color: var(--purple); margin-top: 4px; font-family: monospace; }
+.t5-tts-btn {
+  background: rgba(199,146,234,0.12); border: 1.5px solid var(--purple);
+  border-radius: 12px; padding: 8px 12px; color: var(--purple);
+  font-size: 1rem; cursor: pointer; flex-shrink: 0; margin-top: 2px;
+  transition: all 0.15s;
+}
+.t5-tts-btn:active { background: rgba(199,146,234,0.25); transform: scale(0.95); }
+.t5-meaning {
+  font-size: clamp(1rem, 3.5vw, 1.2rem); color: var(--yellow); font-weight: 600;
+  margin-bottom: 18px;
+}
+.t5-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 14px 0; }
+.t5-tense-label { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 6px; letter-spacing: 0.1em; }
+.t5-tense-grid { display: flex; flex-direction: column; gap: 8px; }
+.t5-tense-row {
+  display: grid; grid-template-columns: 80px 1fr; gap: 10px; align-items: center;
+}
+.t5-tense-name {
+  font-size: 0.75rem; color: var(--text-dim);
+  background: rgba(255,255,255,0.06); padding: 4px 8px;
+  border-radius: 6px; text-align: center;
+}
+.t5-tense-value {
+  font-size: clamp(0.95rem, 3vw, 1.1rem); color: var(--white); font-weight: 600;
+  font-family: 'Georgia', serif;
+}
+
+/* ══════════════════════════════════════════════════
+   T6 · 课文背诵
+══════════════════════════════════════════════════ */
+.t6-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background: linear-gradient(160deg, #0a2818 0%, #0d1f3c 100%);
+}
+.t6-card {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(100,255,218,0.15);
+  border-radius: 24px;
+  padding: 28px 24px;
+  width: 100%; max-width: 560px;
+  position: relative; z-index: 2;
+}
+.t6-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px;
+}
+.t6-title {
+  font-size: clamp(0.9rem, 3vw, 1.05rem); color: var(--text-dim);
+}
+.t6-tts-btn {
+  background: rgba(100,255,218,0.1); border: 1.5px solid var(--accent);
+  border-radius: 50%; width: 42px; height: 42px;
+  color: var(--accent); font-size: 1.1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.t6-tts-btn:active { background: rgba(100,255,218,0.2); transform: scale(0.95); }
+.t6-tts-btn.playing { animation: ttsPulse 0.8s ease-in-out infinite; }
+.t6-paragraph {
+  font-size: clamp(1.1rem, 4vw, 1.45rem);
+  color: var(--text); line-height: 2;
+  font-family: 'Georgia', serif;
+  padding: 18px 20px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 14px;
+  border-left: 3px solid var(--accent);
+  margin-bottom: 18px;
+  min-height: 80px;
+}
+.t6-prompt {
+  font-size: 0.8rem; color: var(--text-dim); text-align: center; margin-bottom: 12px;
+}
+.t6-nav-btns { display: flex; gap: 10px; justify-content: center; }
+.t6-nav-btn {
+  flex: 1; background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px; padding: 12px;
+  color: var(--text); font-size: 0.95rem; font-weight: 600;
+  cursor: pointer; text-align: center; transition: all 0.15s;
+}
+.t6-nav-btn:active { background: rgba(255,255,255,0.12); transform: scale(0.97); }
+.t6-nav-btn.primary {
+  background: rgba(100,255,218,0.12);
+  border-color: var(--accent); color: var(--accent);
+}
+.t6-progress {
+  text-align: center; font-size: 0.75rem; color: var(--text-dim); margin-top: 10px;
+}
+
+/* ══════════════════════════════════════════════════
+   完成页
+══════════════════════════════════════════════════ */
+.done-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background: radial-gradient(ellipse at 50% 40%, #0d2a1a 0%, #0a1628 70%);
+}
+.confetti {
+  position: fixed; inset: 0; pointer-events: none; z-index: 3; overflow: hidden;
+}
+.confetti-piece {
+  position: absolute; width: 8px; height: 8px;
+  top: -20px; animation: confettiFall linear forwards;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+.done-card {
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(100,255,218,0.2);
+  border-radius: 28px; padding: 36px 28px;
+  width: 100%; max-width: 480px; text-align: center; position: relative; z-index: 4;
+}
+.done-title {
+  font-size: clamp(2rem, 7vw, 3rem); font-weight: 800;
+  background: linear-gradient(135deg, var(--accent), var(--green));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 12px;
+}
+.done-score {
+  font-size: 1.1rem; color: var(--text-dim); margin-bottom: 8px;
+}
+.done-big {
+  font-size: clamp(3rem, 10vw, 4.5rem); font-weight: 800;
+  color: var(--accent);
+}
+.done-encourage {
+  font-size: clamp(1rem, 3.5vw, 1.2rem);
+  color: var(--yellow); margin: 16px 0 24px;
+}
+.done-btn {
+  display: inline-block; background: var(--accent); color: #0a1628;
+  border: none; border-radius: 50px; padding: 14px 36px;
+  font-size: 1rem; font-weight: 700; cursor: pointer;
+  box-shadow: 0 0 20px rgba(100,255,218,0.3);
+  transition: transform 0.15s;
+}
+.done-btn:active { transform: scale(0.96); }
+
+/* ── Animations ─────────────────────────────────── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+.shake { animation: shake 0.4s ease; }
+@keyframes pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.pop { animation: pop 0.3s ease; }
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+
+<!-- Slides injected by JS -->
+<div id="slide-container" style="position:fixed;inset:0;"></div>
+
+<div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
+<div class="page-num" id="pageNum"></div>
+<div class="nav-hint" id="navHint"></div>
+
+<script>
+// ════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════
+const DATA = {
+  cn_chars: [
+    {char:"山", pinyin:"shān", word:"山川"},
+    {char:"川", pinyin:"chuān", word:"山川"},
+    {char:"休息", pinyin:"xiū xi", word:"休息"},
+    {char:"奔跑", pinyin:"bēn pǎo", word:"奔跑"},
+    {char:"终于", pinyin:"zhōng yú", word:"终于"},
+    {char:"明白", pinyin:"míng bai", word:"明白"},
+    {char:"新奇", pinyin:"xīn qí", word:"新奇"},
+    {char:"破旧", pinyin:"pò jiù", word:"破旧"},
+    {char:"先生", pinyin:"xiān sheng", word:"先生"},
+    {char:"温", pinyin:"wēn", word:"温"},
+  ],
+  en_spelling: [
+    {word:"our", meaning:"我们的", pos:"adj.", pron:"/aʊə/"},
+    {word:"found", meaning:"发现（find的过去式）", pos:"v.", pron:"/faʊnd/"},
+    {word:"ground", meaning:"地面", pos:"n.", pron:"/ɡraʊnd/"},
+    {word:"cow", meaning:"母牛", pos:"n.", pron:"/kaʊ/"},
+    {word:"how", meaning:"怎样", pos:"adv.", pron:"/haʊ/"},
+    {word:"sting", meaning:"刺，叮", pos:"v.", pron:"/stɪŋ/"},
+  ],
+  en_irregular: [
+    {word:"drink", meaning:"喝", pron:"/drɪŋk/", forms:{"原形":"drink","过去式":"drank","过去分词":"drunk"}},
+    {word:"come", meaning:"来", pron:"/kʌm/", forms:{"原形":"come","过去式":"came","过去分词":"come"}},
+    {word:"run", meaning:"跑", pron:"/rʌn/", forms:{"原形":"run","过去式":"ran","过去分词":"run"}},
+  ],
+  article: {
+    title: "The Turtle",
+    paragraphs: [
+      "One day, a turtle goes to the river. She wants to swim. She sees some fish. The fish are very pretty.",
+      "The turtle swims with the fish. She has a good time. She is very happy.",
+      "Another day, the turtle goes to the river again. She wants to swim with the fish.",
+      "But the fish are not there. Where are the fish? The fish are gone. The turtle is sad.",
+      "What should the turtle do? Let us think about this story."
+    ]
+  }
+};
+
+// TTS audio cache
+const audioCache = {};
+let currentAudio = null;
+
+function playTTS(text, lang, btnEl) {
+  const key = lang + '_' + text;
+  if (audioCache[key]) {
+    playAudio(audioCache[key], btnEl);
+    return;
+  }
+  const audio = new Audio();
+  audioCache[key] = audio;
+  audio.src = '/api/english/tts?text=' + encodeURIComponent(text);
+  audio.addEventListener('canplaythrough', () => playAudio(audio, btnEl), {once: true});
+  audio.addEventListener('error', () => {
+    if (btnEl) btnEl.classList.remove('playing');
+  }, {once: true});
+  audio.load();
+}
+
+function playAudio(audio, btnEl) {
+  if (currentAudio && currentAudio !== audio) {
+    currentAudio.pause(); currentAudio.currentTime = 0;
+  }
+  currentAudio = audio;
+  if (btnEl) btnEl.classList.add('playing');
+  audio.currentTime = 0;
+  audio.play().catch(() => {});
+  audio.onended = () => { if (btnEl) btnEl.classList.remove('playing'); };
+}
+
+// ─── Slide engine ─────────────────────────────
+let current = 0;
+let score = 0;
+let cn_idx = 0, en_s_idx = 0, en_i_idx = 0, para_idx = 0;
+
+// Build slides
+const SLIDES = [
+  {type:'t1_welcome'},
+  {type:'t2_overview'},
+];
+
+for (let i = 0; i < DATA.cn_chars.length; i++) SLIDES.push({type:'t3_cn', idx: i});
+for (let i = 0; i < DATA.en_spelling.length; i++) SLIDES.push({type:'t4_en', idx: i});
+for (let i = 0; i < DATA.en_irregular.length; i++) SLIDES.push({type:'t5_irregular', idx: i});
+for (let i = 0; i < DATA.article.paragraphs.length; i++) SLIDES.push({type:'t6_article', idx: i});
+
+SLIDES.push({type:'done'});
+
+const TOTAL = SLIDES.length;
+
+// ─── Render ───────────────────────────────────
+const container = document.getElementById('slide-container');
+
+function esc(s) { return String(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+function renderSlide(s) {
+  if (s.type === 't1_welcome') return renderT1();
+  if (s.type === 't2_overview') return renderT2();
+  if (s.type === 't3_cn') return renderT3(s.idx);
+  if (s.type === 't4_en') return renderT4(s.idx);
+  if (s.type === 't5_irregular') return renderT5(s.idx);
+  if (s.type === 't6_article') return renderT6(s.idx);
+  if (s.type === 'done') return renderDone();
+  return '';
+}
+
+function renderT1() {
+  return '<div class="t1-bg" style="position:absolute;inset:0;z-index:0"></div>' +
+    '<div class="tree-container" style="position:relative;z-index:2;text-align:center;animation:treeSway 4s ease-in-out infinite">' +
+    '<div class="tree-star">⭐</div>' +
+    '<div style="display:flex;flex-direction:column;align-items:center;">' +
+    '<div class="tree-triangle tree-t1"></div>' +
+    '<div class="tree-triangle tree-t2"></div>' +
+    '<div class="tree-triangle tree-t3"></div>' +
+    '<div class="tree-trunk"></div></div></div>' +
+    '<div class="t1-title" style="position:relative;z-index:2;margin-top:16px">小树，欢迎来背诵 ✨</div>' +
+    '<div class="t1-subtitle" style="position:relative;z-index:2">圣诞老人说：认真复习，能量满满 🎄</div>' +
+    '<button class="t1-btn" onclick="nextSlide()">开始复习 →</button>';
+}
+
+function renderT2() {
+  const total = DATA.cn_chars.length + DATA.en_spelling.length + DATA.en_irregular.length + DATA.article.paragraphs.length;
+  return '<div class="t2-bg" style="position:absolute;inset:0;z-index:0"></div>' +
+   '<div class="robot-container" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;position:relative;z-index:2">' +
+   '<svg class="optimus-svg" viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" style="width:180px;height:216px;animation:robotFloat 3s ease-in-out infinite;filter:drop-shadow(0 0 20px rgba(58,155,255,0.4))">' +
+   '<defs>' +
+   '<linearGradient id="helmetGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#c82828"/><stop offset="50%" stop-color="#9a1010"/><stop offset="100%" stop-color="#6a0808"/></linearGradient>' +
+   '<linearGradient id="faceGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#b02020"/><stop offset="100%" stop-color="#7a0a0a"/></linearGradient>' +
+   '<linearGradient id="blueGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#1a4aba"/><stop offset="100%" stop-color="#0a1a6a"/></linearGradient>' +
+   '<linearGradient id="metalGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3a4a6a"/><stop offset="50%" stop-color="#2a3a5a"/><stop offset="100%" stop-color="#1a2a4a"/></linearGradient>' +
+   '<linearGradient id="eyeGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5ab0ff"/><stop offset="100%" stop-color="#1a5fdf"/></linearGradient>' +
+   '<filter id="glow"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
+   '<filter id="metalShine"><feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/><feSpecularLighting in="blur" surfaceScale="5" specularConstant="1" specularExponent="20" result="specOut"><fePointLight x="60" y="40" z="100" lighting-color="#ffffff"/></feSpecularLighting><feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut"/><feComposite in="SourceGraphic" in2="specOut" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/></feSpecularLighting></filter>' +
+   '</defs>' +
+
+   /* 头盔顶部 */
+   '<path d="M40,75 L50,25 L150,25 L160,75 Z" fill="url(#helmetGrad)" filter="url(#metalShine)"/>' +
+   /* 头顶蓝色V纹 */
+   '<path d="M75,25 L100,55 L125,25 L115,25 L100,48 L85,25 Z" fill="url(#blueGrad)" opacity="0.9"/>' +
+
+   /* 两侧蓝色耳块 */
+   '<rect x="22" y="55" width="20" height="55" rx="4" fill="url(#blueGrad)"/>' +
+   '<rect x="158" y="55" width="20" height="55" rx="4" fill="url(#blueGrad)"/>' +
+
+   /* 面部主体 */
+   '<rect x="42" y="75" width="116" height="110" rx="8" fill="url(#faceGrad)" filter="url(#metalShine)"/>' +
+
+   /* 眼部区域背景 */
+   '<rect x="52" y="88" width="96" height="36" rx="6" fill="#1a1a2e" opacity="0.8"/>' +
+
+   /* 左眼 */
+   '<ellipse cx="76" cy="106" rx="16" ry="12" fill="url(#eyeGrad)" filter="url(#glow)">' +
+   '<animate attributeName="opacity" values="1;0.6;1" dur="2s" repeatCount="indefinite"/></ellipse>' +
+   '<ellipse cx="76" cy="106" rx="8" ry="5" fill="rgba(255,255,255,0.5)"/>' +
+
+   /* 右眼 */
+   '<ellipse cx="124" cy="106" rx="16" ry="12" fill="url(#eyeGrad)" filter="url(#glow)">' +
+   '<animate attributeName="opacity" values="1;0.6;1" dur="2s" repeatCount="indefinite" begin="0.3s"/></ellipse>' +
+   '<ellipse cx="124" cy="106" rx="8" ry="5" fill="rgba(255,255,255,0.5)"/>' +
+
+   /* 眼眶高光 */
+   '<ellipse cx="72" cy="102" rx="4" ry="2" fill="rgba(255,255,255,0.4)"/>' +
+   '<ellipse cx="120" cy="102" rx="4" ry="2" fill="rgba(255,255,255,0.4)"/>' +
+
+   /* 嘴部散热格栅 */
+   '<rect x="65" y="138" width="70" height="38" rx="5" fill="#0d0d1a" stroke="#2a2a4a" stroke-width="1.5"/>' +
+   '<line x1="65" y1="148" x2="135" y2="148" stroke="#3a9bff" stroke-width="1" opacity="0.4"/><line x1="65" y1="156" x2="135" y2="156" stroke="#3a9bff" stroke-width="1" opacity="0.4"/><line x1="65" y1="164" x2="135" y2="164" stroke="#3a9bff" stroke-width="1" opacity="0.4"/><line x1="65" y1="172" x2="135" y2="172" stroke="#3a9bff" stroke-width="1" opacity="0.4"/>' +
+
+   /* 嘴部发光文字 */
+   '<text x="100" y="163" text-anchor="middle" font-family="monospace" font-size="7" fill="#3a9bff" opacity="0.9" letter-spacing="2">' +
+   '<animate attributeName="opacity" values="1;0;1" dur="1.2s" repeatCount="indefinite"/>READY</text>' +
+
+   /* 下巴蓝色条纹 */
+   '<rect x="72" y="180" width="56" height="6" rx="2" fill="url(#blueGrad)" opacity="0.7"/>' +
+
+   /* 肩甲 */
+   '<rect x="8" y="188" width="40" height="30" rx="6" fill="url(#blueGrad)" filter="url(#metalShine)"/>' +
+   '<rect x="152" y="188" width="40" height="30" rx="6" fill="url(#blueGrad)" filter="url(#metalShine)"/>' +
+
+   /* Autobot Logo */
+   '<polygon points="100,200 88,220 100,214 112,220" fill="#64ffda" filter="url(#glow)"/>' +
+   '<rect x="88" y="220" width="24" height="4" rx="2" fill="#64ffda" filter="url(#glow)"/>' +
+
+   /* 扫描线动画 */
+   '<rect x="40" y="25" width="120" height="200" fill="none" stroke="#3a9bff" stroke-width="0" opacity="0.1">' +
+   '<animate attributeName="opacity" values="0;0.15;0" dur="3s" repeatCount="indefinite"/>' +
+   '</rect>' +
+
+   /* 顶部蓝色光纹 */
+   '<line x1="60" y1="25" x2="80" y2="25" stroke="#3a9bff" stroke-width="2" opacity="0.6"/>' +
+   '<line x1="120" y1="25" x2="140" y2="25" stroke="#3a9bff" stroke-width="2" opacity="0.6"/>' +
+   '</svg>' +
+
+   '<div style="font-size:clamp(1.1rem,4vw,1.5rem);font-weight:700;color:var(--accent);margin-top:16px;text-shadow:0 0 20px rgba(58,155,255,0.6)">擎天柱报到 🤖</div>' +
+   '<div class="task-desc">今日任务：<strong>' + total + '</strong> 道题<br>复习完获得 💎 能量块</div>' +
+   '<div class="energy-container"><div class="energy-grid">' +
+   Array(5).fill('<div class="energy-block">💎</div>').join('') + '</div></div>' +
+   '<button class="t2-go-btn" onclick="nextSlide()">出发！🚀</button></div>';
+}
+
+function renderT3(idx) {
+  const c = DATA.cn_chars[idx];
+  return '<div class="t3-bg" style="position:absolute;inset:0;z-index:0"></div>' +
+    '<div class="migu-box"><div class="migu-diag"></div><div class="migu-diag"></div>' +
+    '<div class="char-display">' +
+    '<div class="char-pinyin">' + esc(c.pinyin) + '</div>' +
+    '<div class="char-main">' + esc(c.char) + '</div>' +
+    '<div class="char-word-label">词：' + esc(c.word) + '</div></div></div>' +
+    '<div class="t3-nav"><button class="t3-nav-btn" onclick="prevSlide()">◀</button>' +
+    '<button class="t3-nav-btn" onclick="nextSlide()">▶</button></div>' +
+    '<div class="t3-progress">' + (idx+1) + ' / ' + DATA.cn_chars.length + '</div>';
+}
+
+function renderT4(idx) {
+  const e = DATA.en_spelling[idx];
+  return '<div class="t4-bg" style="position:absolute;inset:0;z-index:0"></div>' +
+    '<div class="t4-card">' +
+    '<div class="t4-word-row">' +
+    '<div><div class="t4-word">' + esc(e.word) + '</div><div class="t4-pronunciation">' + esc(e.pron) + '</div></div>' +
+    '<button class="t4-tts-btn" onclick="playTTS(\'' + esc(e.word) + '\',\'en\',this)">🔊</button></div>' +
+    '<div class="t4-meaning-pos">' +
+    '<div class="t4-pos">' + esc(e.pos) + '</div></div>' +
+    '<div class="t4-divider"></div>' +
+    '<div class="t4-reveal-area" id="t4-reveal" onclick="revealEnMeaning(this)">' +
+    '<div class="t4-reveal-hint">👆 点击显示中文意思</div>' +
+    '<div class="t4-meaning-hidden">' + esc(e.meaning) + '</div></div></div>' +
+    '<div class="t3-nav" style="bottom:20px"><button class="t3-nav-btn" onclick="prevSlide()">◀</button>' +
+    '<span style="color:var(--text-dim);font-size:0.8rem;padding:0 12px;line-height:44px">' + (idx+1) + '/' + DATA.en_spelling.length + '</span>' +
+    '<button class="t3-nav-btn" onclick="nextSlide()">▶</button></div>';
+}
+
+function revealEnMeaning(el) {
+  el.classList.add('revealed');
+}
+
+function renderT5(idx) {
+  const e = DATA.en_irregular[idx];
+  const forms = Object.entries(e.forms).map(([k,v]) =>
+    '<div class="t5-tense-row"><div class="t5-tense-name">' + k + '</div><div class="t5-tense-value">' + esc(v) + '</div></div>'
+  ).join('');
+  return '<div class="t5-bg" style="position:absolute;inset:0;z-index:0"></div>' +
+    '<div class="t5-card">' +
+    '<div class="t5-word-row">' +
+    '<div><div class="t5-word">' + esc(e.word) + '</div><div class="t5-pronunciation">' + esc(e.pron) + '</div></div>' +
+    '<button class="t5-tts-btn" onclick="playTTS(\'' + esc(e.word) + '\',\'en\',this)">🔊</button></div>' +
+    '<div class="t5-meaning">' + esc(e.meaning) + '</div>' +
+    '<div class="t5-divider"></div>' +
+    '<div class="t5-tense-label">🔄 动词时态变化</div>' +
+    '<div class="t5-tense-grid">' + forms + '</div></div>' +
+    '<div class="t3-nav" style="bottom:20px"><button class="t3-nav-btn" onclick="prevSlide()">◀</button>' +
+    '<span style="color:var(--text-dim);font-size:0.8rem;padding:0 12px;line-height:44px">' + (idx+1) + '/' + DATA.en_irregular.length + '</span>' +
+    '<button class="t3-nav-btn" onclick="nextSlide()">▶</button></div>';
+}
+
+function renderT6(idx) {
+  const para = DATA.article.paragraphs[idx];
+  const isLast = idx === DATA.article.paragraphs.length - 1;
+  return '<div class="t6-bg" style="position:absolute;inset:0;z-index:0"></div>' +
+    '<div class="t6-card">' +
+    '<div class="t6-header">' +
+    '<div class="t6-title">📖 ' + esc(DATA.article.title) + '</div>' +
+    '<button class="t6-tts-btn" onclick="playTTS(\'' + esc(para) + '\',\'en\',this)">🔊</button></div>' +
+    '<div class="t6-paragraph">' + esc(para) + '</div>' +
+    '<div class="t6-prompt">🗣️ 跟读练习，熟读后点"下一段"</div>' +
+    '<div class="t6-nav-btns">' +
+    (idx > 0 ? '<button class="t6-nav-btn" onclick="prevSlide()">◀ 上一段</button>' : '') +
+    '<button class="t6-nav-btn ' + (isLast ? '' : 'primary') + '" onclick="nextSlide()">' + (isLast ? '✅ 背诵完成' : '下一段 ▶') + '</button></div>' +
+    '<div class="t6-progress">第 ' + (idx+1) + ' 段 / 共 ' + DATA.article.paragraphs.length + ' 段</div></div>';
+}
+
+function renderDone() {
+  const total = DATA.cn_chars.length + DATA.en_spelling.length + DATA.en_irregular.length + DATA.article.paragraphs.length;
+  const messages = [
+    "太棒了！🌟 小树能量满格！",
+    "完美通关！💎 获得5个能量块！",
+    "厉害！✨ 继续加油！",
+  ];
+  return '<div class="done-bg" style="position:absolute;inset:0;z-index:0"></div>' +
+    '<div class="confetti" id="confetti"></div>' +
+    '<div class="done-card">' +
+    '<div class="done-title">🎉 太棒了小树！</div>' +
+    '<div class="done-score">本次复习完成</div>' +
+    '<div class="done-big">+' + total + ' 💎</div>' +
+    '<div class="done-encourage">' + messages[Math.floor(Math.random()*messages.length)] + '</div>' +
+    '<button class="done-btn" onclick="location.reload()">🔄 再来一遍</button></div>';
+}
+
+// ─── Slide engine ─────────────────────────────
+function showSlide(idx) {
+  if (idx < 0 || idx >= TOTAL) return;
+  current = idx;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('slide-' + idx);
+  if (el) el.classList.add('active');
+  document.getElementById('prog').style.width = ((current+1)/TOTAL*100).toFixed(1) + '%';
+  document.getElementById('pageNum').textContent = (current+1) + ' / ' + TOTAL;
+  document.getElementById('navHint').textContent = current === TOTAL-1 ? '按 R 重来' :
+    (SLIDES[current].type === 't1_welcome' || SLIDES[current].type === 't2_overview') ? '点击按钮继续 ↓' : '← → 翻页 | 点击答题';
+  if (current === TOTAL-1) spawnConfetti();
+  window.scrollTo(0,0);
+}
+
+function nextSlide() { if (current < TOTAL-1) showSlide(current+1); }
+function prevSlide() { if (current > 0) showSlide(current-1); }
+
+function spawnConfetti() {
+  const el = document.getElementById('confetti');
+  if (!el) return;
+  const colors = ['#64ffda','#ffd700','#ff6eb4','#78e8fa','#9ece6a','#c792ea'];
+  for (let i = 0; i < 40; i++) {
+    const p = document.createElement('div');
+    p.className = 'confetti-piece';
+    p.style.left = Math.random()*100 + '%';
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    p.style.animationDuration = (1.5 + Math.random()*2) + 's';
+    p.style.animationDelay = (Math.random()*1) + 's';
+    p.style.borderRadius = Math.random()>0.5 ? '50%' : '2px';
+    el.appendChild(p);
+  }
+}
+
+// ─── Init ─────────────────────────────────────
+SLIDES.forEach((s, i) => {
+  const el = document.createElement('div');
+  el.className = 'slide'; el.id = 'slide-' + i;
+  el.innerHTML = renderSlide(s);
+  container.appendChild(el);
+});
+
+// Stars
+const starsEl = document.getElementById('stars');
+for (let i = 0; i < 30; i++) {
+  const s = document.createElement('div');
+  s.className = 'star';
+  s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;animation-delay:${Math.random()*3}s;animation-duration:${2+Math.random()*2}s`;
+  starsEl.appendChild(s);
+}
+
+// Snowflakes for T1
+function spawnSnowflake() {
+  const sf = document.createElement('div');
+  sf.className = 'snowflake';
+  sf.textContent = ['❄','❅','❆','✦'][Math.floor(Math.random()*4)];
+  sf.style.left = Math.random()*100 + '%';
+  sf.style.fontSize = (0.6 + Math.random()*1) + 'rem';
+  sf.style.animationDuration = (4 + Math.random()*4) + 's';
+  document.body.appendChild(sf);
+  setTimeout(() => sf.remove(), 9000);
+}
+setInterval(spawnSnowflake, 600);
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  if (e.key === 'r' || e.key === 'R') { location.reload(); return; }
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prevSlide(); }
+});
+
+showSlide(0);
+</script>
+</body>
+</html>

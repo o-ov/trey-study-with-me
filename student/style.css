@@ -256,3 +256,22 @@ body {
 
 /* ── 间距 ── */
 .spacer { height: 80px; }
+
+/* ── 横屏 iPad 适配 ── */
+@media (orientation: landscape) {
+  body {
+    max-width: unset;
+    padding: 12px 32px;
+  }
+  .canvas-wrap,
+  #drawCanvas {
+    max-width: 100%;
+  }
+  .unit-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .tab-bar {
+    max-width: 100%;
+    bottom: env(safe-area-inset-bottom, 0);
+  }
+}

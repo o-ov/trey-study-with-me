@@ -117,14 +117,31 @@ async function load() {
     document.getElementById('progress_fill').style.width = pct + '%';
     document.getElementById('progress_text').textContent = curSess + ' / ' + nextSess + ' 练习';
 
-    // 今日任务 banner：按类型分组计数
-    if (todayRes && todayRes.tasks && todayRes.tasks.length > 0) {
-      const tasks = todayRes.tasks;
+    // 今日任务 banner：按类型分组计数（语文 + 英语）
+    const todayTasks = todayRes && todayRes.tasks ? [...todayRes.tasks] : [];
+
+    // 合并英语 schedule 任务（当日、进行中的）
+    const todayDate = todayRes && todayRes.date ? todayRes.date : new Date().toISOString().slice(0, 10);
+    let enTasks = [];
+    try {
+      const enRes = await fetch(API + '/english/schedule?child_id=1&date=' + todayDate);
+      const enData = await enRes.json();
+      enTasks = (enData.tasks || []).filter(s => s.status !== 'completed');
+    } catch(e) {}
+
+    const allTasks = [...todayTasks, ...enTasks];
+    if (allTasks.length > 0) {
       const groups = {};
-      for (const t of tasks) {
+      for (const t of todayTasks) {
         if (!groups[t.task_type]) groups[t.task_type] = { total: 0, done: 0 };
         groups[t.task_type].total++;
         if (t.status === 'completed') groups[t.task_type].done++;
+      }
+      for (const t of enTasks) {
+        // 英语：spelling/irregular/pep → 听写，reading → 阅读（合并同类）
+        const key = 'en_' + (t.task_type === 'reading' ? 'reading' : 'dictation');
+        if (!groups[key]) groups[key] = { total: 1, done: t.status === 'completed' ? 1 : 0 };
+        else { groups[key].total++; if (t.status === 'completed') groups[key].done++; }
       }
       const totalTypes = Object.keys(groups).length;
       const doneTypes = Object.values(groups).filter(g => g.done === g.total).length;

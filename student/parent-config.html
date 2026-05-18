@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>学习配置</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background: var(--bg); }
+    .back-btn { color: #fff; text-decoration: none; font-size: 15px; padding: 4px 8px; border-radius: 8px; background: rgba(255,255,255,20%); }
+    .page-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #4F46E5; color: #fff; }
+
+    .section-title {
+      font-size: 13px; font-weight: 700; color: var(--sub);
+      padding: 12px 16px 6px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    /* Subject card */
+    .subject-card {
+      background: var(--card); margin: 8px 16px; border-radius: 16px;
+      overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .subject-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px; cursor: pointer; user-select: none;
+    }
+    .subject-header:active { opacity: 0.8; }
+    .subject-icon { font-size: 32px; }
+    .subject-info { flex: 1; }
+    .subject-name { font-weight: 700; font-size: 16px; }
+    .subject-status { font-size: 12px; color: #22C55E; margin-top: 2px; }
+    .subject-status.inactive { color: var(--sub); }
+    .subject-body { display: none; padding: 0 16px 16px; }
+    .subject-body.open { display: block; }
+    .subject-body hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+    .task-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #EEF2FF; color: #3730A3;
+      padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 600;
+      margin: 3px;
+    }
+
+    .config-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .btn {
+      flex: 1; padding: 10px; border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 700; cursor: pointer; text-align: center;
+    }
+    .btn-primary { background: #4F46E5; color: #fff; }
+    .btn-secondary { background: #F3F4F6; color: var(--text); }
+    .btn-danger { background: #FEE2E2; color: #DC2626; }
+
+    /* History accordion */
+    .history-section { margin-top: 8px; }
+    .history-toggle {
+      font-size: 12px; color: var(--sub); padding: 6px 0; cursor: pointer;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .history-toggle::before { content: '▶'; font-size: 10px; transition: transform 0.2s; }
+    .history-toggle.open::before { transform: rotate(90deg); }
+    .history-list { display: none; padding-left: 8px; }
+    .history-list.open { display: block; }
+    .history-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-date { color: var(--sub); flex: 1; }
+
+    /* New config modal */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: none; align-items: flex-end; z-index: 200;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-sheet {
+      background: var(--card); border-radius: 20px 20px 0 0;
+      width: 100%; max-height: 90vh; overflow-y: auto;
+      padding: 24px 20px;
+      padding-bottom: max(24px, env(safe-area-inset-bottom));
+    }
+    .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 16px; text-align: center; }
+    .modal-close { float: right; font-size: 20px; color: var(--sub); cursor: pointer; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 13px; font-weight: 700; color: var(--sub); margin-bottom: 6px; display: block; }
+    .form-input {
+      width: 100%; padding: 10px 12px; border: 2px solid #E5E7EB;
+      border-radius: 10px; font-size: 15px; box-sizing: border-box; outline: none;
+    }
+    .form-input:focus { border-color: #4F46E5; }
+
+    .item-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .item-card {
+      border: 2px solid #E5E7EB; border-radius: 12px; padding: 10px;
+      cursor: pointer; font-size: 13px; transition: all 0.15s;
+    }
+    .item-card.selected { border-color: #4F46E5; background: #EEF2FF; }
+    .item-card:active { transform: scale(0.97); }
+    .item-card .item-name { font-weight: 700; }
+    .item-card .item-sub { font-size: 11px; color: var(--sub); margin-top: 2px; }
+
+    .modal-footer { margin-top: 20px; }
+    .btn-submit {
+      width: 100%; padding: 14px; background: #4F46E5; color: #fff;
+      border: none; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer;
+    }
+    .btn-submit:disabled { background: #ccc; }
+    .btn-cancel {
+      width: 100%; padding: 12px; background: #F3F4F6; color: var(--text);
+      border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .empty-hint { font-size: 13px; color: var(--sub); text-align: center; padding: 12px 0; }
+
+    /* Nav */
+    .nav-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--card); border-top: 1px solid var(--border);
+      display: flex; padding: 8px 0;
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+    .nav-item { flex: 1; text-align: center; font-size: 11px; color: var(--sub); text-decoration: none; }
+    .nav-item.active { color: #4F46E5; }
+    .nav-item .nav-icon { font-size: 22px; display: block; }
+    body { padding-bottom: 72px; }
+
+    .loading { text-align: center; padding: 40px; color: var(--sub); }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <a href="index.html" class="back-btn">← 返回</a>
+  <span style="font-weight:700">学习配置</span>
+</div>
+
+<div id="loading" class="loading">加载中…</div>
+<div id="content" style="display:none">
+
+  <!-- 语文 -->
+  <div class="section-title">语文</div>
+  <div class="subject-card">
+    <div class="subject-header" onclick="toggleSubject('cn')">
+      <span class="subject-icon">📕</span>
+      <div class="subject-info">
+        <div class="subject-name">语文学科</div>
+        <div class="subject-status" id="cn-status">加载中…</div>
+      </div>
+      <span id="cn-arrow" style="font-size:18px;color:var(--sub)">▼</span>
+    </div>
+    <div class="subject-body" id="cn-body">
+      <div id="cn-current"></div>
+      <div class="config-actions">
+        <button class="btn btn-secondary" onclick="openHistory('cn')">历史</button>
+        <button class="btn btn-primary" onclick="openConfig('cn')">新增配置</button>
+      </div>
+      <div class="history-section" id="cn-history"></div>
+    </div>
+  </div>
+
+  <!-- 英语 -->
+  <div class="section-title">英语</div>
+  <div class="subject-card">
+    <div class="subject-header" onclick="toggleSubject('en')">
+      <span class="subject-icon">🔤</span>
+      <div class="subject-info">
+        <div class="subject-name">英文学科</div>
+        <div class="subject-status" id="en-status">加载中…</div>
+      </div>
+      <span id="en-arrow" style="font-size:18px;color:var(--sub)">▼</span>
+    </div>
+    <div class="subject-body" id="en-body">
+      <div id="en-current"></div>
+      <div class="config-actions">
+        <button class="btn btn-secondary" onclick="openHistory('en')">历史</button>
+        <button class="btn btn-primary" onclick="openConfig('en')">新增配置</button>
+      </div>
+      <div class="history-section" id="en-history"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 新增配置 Modal -->
+<div class="modal-overlay" id="config-modal">
+  <div class="modal-sheet">
+    <div class="modal-close" onclick="closeModal()">✕</div>
+    <div class="modal-title" id="modal-title">新增配置</div>
+
+    <div class="form-group">
+      <label class="form-label">配置名称（可选）</label>
+      <input class="form-input" id="config-name" placeholder="如：第5周学习内容">
+    </div>
+
+    <!-- 语文可选单元 -->
+    <div id="cn-options" style="display:none">
+      <div class="form-group">
+        <label class="form-label">选择听写单元</label>
+        <div class="item-grid" id="dictation-options"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">选择背诵内容</label>
+        <div class="item-grid" id="recite-options"></div>
+      </div>
+    </div>
+
+    <!-- 英语可选内容 -->
+    <div id="en-options" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Spelling 词汇</label>
+        <div id="spelling-count" style="font-size:13px;color:var(--sub);padding:4px 0"></div>
+        <div class="item-grid" id="spelling-options"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Irregular Verbs</label>
+        <div id="irregular-count" style="font-size:13px;color:var(--sub);padding:4px 0"></div>
+        <div class="item-grid" id="irregular-options"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">PEP 词汇</label>
+        <div id="pep-count" style="font-size:13px;color:var(--sub);padding:4px 0"></div>
+        <div class="item-grid" id="pep-options"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">阅读文章</label>
+        <div id="article-count" style="font-size:13px;color:var(--sub);padding:4px 0"></div>
+        <div class="item-grid" id="article-options"></div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-submit" id="submit-btn" onclick="submitConfig()">保存配置</button>
+      <button class="btn-cancel" onclick="closeModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<nav class="nav-bar">
+  <a href="index.html" class="nav-item active"><span class="nav-icon">🏠</span>首页</a>
+  <a href="today.html" class="nav-item"><span class="nav-icon">📅</span>今日</a>
+  <a href="profile.html" class="nav-item"><span class="nav-icon">👤</span>我的</a>
+</nav>
+
+<script>
+const API = 'http://' + location.hostname + ':8080/api';
+let currentSubject = null;
+let cnBatches = [];
+let enBatches = [];
+
+// ── Init ──────────────────────────────────────────────────────
+async function load() {
+  const res = await fetch(API + '/parent/batch/list');
+  const data = await res.json();
+  cnBatches = data.batches.filter(b => b.subject === 'cn');
+  enBatches = data.batches.filter(b => b.subject === 'en');
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+
+  renderSubject('cn');
+  renderSubject('en');
+}
+
+function renderSubject(subject) {
+  const batches = subject === 'cn' ? cnBatches : enBatches;
+  const current = batches.find(b => b.is_active === 1);
+  const statusEl = document.getElementById(subject + '-status');
+  const currentEl = document.getElementById(subject + '-current');
+
+  if (current) {
+    statusEl.textContent = '当前生效';
+    statusEl.className = 'subject-status';
+    renderCurrentBatch(current, currentEl);
+  } else {
+    statusEl.textContent = '暂未配置';
+    statusEl.className = 'subject-status inactive';
+    currentEl.innerHTML = '<div class="empty-hint">点击「新增配置」开始布置本周任务</div>';
+  }
+}
+
+async function renderCurrentBatch(batch, container) {
+  const res = await fetch(API + '/parent/batch/detail/' + batch.id);
+  const detail = await res.json();
+  const tags = [];
+
+  if (detail.subject === 'cn') {
+    if (detail.dictations) detail.dictations.forEach(d => tags.push({ label: d.name, type: 'dictation' }));
+    if (detail.recitations) detail.recitations.forEach(r => tags.push({ label: r.name, type: 'recite' }));
+  } else {
+    const wsum = detail.word_summary || {};
+    if (wsum.spelling) tags.push({ label: `Spelling ${wsum.spelling}词`, type: 'spelling' });
+    if (wsum.irregular) tags.push({ label: `Irregular ${wsum.irregular}词`, type: 'irregular' });
+    if (wsum.pep) tags.push({ label: `PEP ${wsum.pep}词`, type: 'pep' });
+    if (detail.article_count > 0) tags.push({ label: `阅读 ${detail.article_count}篇`, type: 'article' });
+  }
+
+  const date = new Date(detail.created_at).toLocaleDateString('zh-CN');
+  container.innerHTML = `
+    <div style="font-size:12px;color:var(--sub);margin-bottom:6px">配置于 ${date}</div>
+    <div>${tags.map(t => `<span class="task-tag">${t.label}</span>`).join('')}</div>
+  `;
+}
+
+function toggleSubject(subject) {
+  const body = document.getElementById(subject + '-body');
+  const arrow = document.getElementById(subject + '-arrow');
+  const isOpen = body.classList.toggle('open');
+  arrow.textContent = isOpen ? '▲' : '▼';
+}
+
+function openHistory(subject) {
+  const batches = subject === 'cn' ? cnBatches : enBatches;
+  const history = batches.filter(b => b.is_active === 0);
+  const container = document.getElementById(subject + '-history');
+  if (!container) return;
+
+  if (history.length === 0) {
+    container.innerHTML = '<div class="empty-hint" style="padding:8px 0">暂无历史配置</div>';
+    return;
+  }
+  container.innerHTML = `
+    <div class="history-toggle" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+      查看历史（${history.length}条）
+    </div>
+    <div class="history-list">
+      ${history.map(b => {
+        const date = new Date(b.created_at).toLocaleDateString('zh-CN');
+        return `
+          <div class="history-item">
+            <span class="history-date">${date}</span>
+            <span style="font-size:12px;color:var(--sub)">${b.name || '未命名'}</span>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+// ── Config Modal ───────────────────────────────────────────────
+async function openConfig(subject) {
+  currentSubject = subject;
+  document.getElementById('modal-title').textContent = subject === 'cn' ? '新增语文配置' : '新增英语配置';
+  document.getElementById('config-name').value = '';
+  document.getElementById('config-modal').classList.add('open');
+
+  if (subject === 'cn') {
+    document.getElementById('cn-options').style.display = 'block';
+    document.getElementById('en-options').style.display = 'none';
+    await loadCnOptions();
+  } else {
+    document.getElementById('cn-options').style.display = 'none';
+    document.getElementById('en-options').style.display = 'block';
+    await loadEnOptions();
+  }
+}
+
+async function loadCnOptions() {
+  // Load available units for dictation and recitations
+  const [unitsRes, recRes] = await Promise.all([
+    fetch(API + '/units').then(r => r.json()),
+    fetch(API + '/recitations').then(r => r.json()),
+  ]);
+  const units = unitsRes.units || [];
+  const recs = recRes.recitations || [];
+
+  document.getElementById('dictation-options').innerHTML = units.map(u =>
+    `<div class="item-card" onclick="toggleItem(this,'dictation',${u.id})">
+      <div class="item-name">${u.name}</div>
+      <div class="item-sub">听写</div>
+    </div>`
+  ).join('');
+  document.getElementById('recite-options').innerHTML = recs.map(r =>
+    `<div class="item-card" onclick="toggleItem(this,'recite',${r.id})">
+      <div class="item-name">${r.name}</div>
+      <div class="item-sub">背诵</div>
+    </div>`
+  ).join('');
+}
+
+async function loadEnOptions() {
+  // Load all English words and articles not yet in any batch (or all)
+  // For simplicity, load everything and let parent select
+  const [spRes, irrRes, pepRes, artRes] = await Promise.all([
+    fetch(API + '/english/words?week_date=2026-05-11&type=spelling').then(r => r.json()),
+    fetch(API + '/english/words?week_date=2026-05-11&type=irregular').then(r => r.json()),
+    fetch(API + '/english/words?week_date=2026-05-11&type=pep').then(r => r.json()),
+    fetch(API + '/english/articles?week_date=2026-05-11').then(r => r.json()),
+  ]);
+
+  document.getElementById('spelling-count').textContent = `${spRes.words?.length || 0} 个词汇`;
+  document.getElementById('irregular-count').textContent = `${irrRes.words?.length || 0} 个动词`;
+  document.getElementById('pep-count').textContent = `${pepRes.words?.length || 0} 个词汇`;
+  document.getElementById('article-count').textContent = `${artRes.articles?.length || 0} 篇文章`;
+
+  document.getElementById('spelling-options').innerHTML = toggleCard('spelling', spRes.words || []);
+  document.getElementById('irregular-options').innerHTML = toggleCard('irregular', irrRes.words || []);
+  document.getElementById('pep-options').innerHTML = toggleCard('pep', pepRes.words || []);
+  document.getElementById('article-options').innerHTML = toggleCard('article', artRes.articles || []);
+}
+
+function toggleCard(type, items) {
+  if (items.length === 0) return '<div class="empty-hint">暂无可选内容</div>';
+  return items.map(it => {
+    const id = it.id;
+    const label = it.word || it.title || it.meaning || it.name || type + id;
+    return `<div class="item-card" onclick="toggleItem(this,'${type}',${id})">
+      <div class="item-name">${label}</div>
+      <div class="item-sub">${it.lesson || type}</div>
+    </div>`;
+  }).join('');
+}
+
+let selectedItems = [];
+
+function toggleItem(el, type, id) {
+  el.classList.toggle('selected');
+  selectedItems = selectedItems.filter(it => !(it.item_type === type && it.item_id === id));
+  if (el.classList.contains('selected')) {
+    selectedItems.push({ item_type: type, item_id: id });
+  }
+}
+
+function closeModal() {
+  document.getElementById('config-modal').classList.remove('open');
+  selectedItems = [];
+}
+
+async function submitConfig() {
+  if (selectedItems.length === 0) {
+    alert('请至少选择一项内容');
+    return;
+  }
+  const name = document.getElementById('config-name').value.trim();
+  const body = {
+    subject: currentSubject,
+    name: name,
+    items: selectedItems
+  };
+  const res = await fetch(API + '/parent/batch/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const result = await res.json();
+  if (result.status === 'ok') {
+    closeModal();
+    await load();
+  } else {
+    alert('保存失败：' + (result.error || '未知错误'));
+  }
+}
+
+load();
+</script>
+</body>
+</html>

@@ -5,72 +5,308 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>英文阅读</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Klee+One&display=swap" rel="stylesheet">
   <style>
-    body { background: var(--bg); }
-    .back-btn { color: #fff; text-decoration: none; font-size: 15px; padding: 4px 8px; border-radius: 8px; background: rgba(255,255,255,20%); }
-    .page-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #4F46E5; color: #fff; }
-    .article-list { padding: 12px 16px; }
+    :root {
+      --en-primary: #1a1a1a;
+      --en-bg: #FAFAF8;
+      --en-card: #FFFFFF;
+      --en-border: #E8E8E3;
+      --en-accent: #004BFE;
+      --en-sub: #888880;
+      --en-success: #34A853;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: var(--en-bg);
+      font-family: 'Microsoft YaHei', sans-serif;
+      color: var(--en-primary);
+      min-height: 100dvh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--en-card);
+      border-bottom: 1px solid var(--en-border);
+      padding: 16px 20px 14px;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .header-top {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 12px;
+    }
+    .back-btn {
+      color: var(--en-accent); text-decoration: none;
+      font-size: 15px; font-weight: 600;
+      cursor: pointer;
+    }
+    .header-title {
+      font-size: 17px; font-weight: 700; color: var(--en-primary);
+      flex: 1; text-align: center; padding-right: 40px;
+    }
+
+    /* ── Article List ── */
+    .article-list { padding: 16px 20px 100px; }
+
     .article-card {
-      background: #fff; border-radius: 16px; padding: 18px;
-      margin-bottom: 12px; cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      transition: transform 0.1s;
+      background: var(--en-card);
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 14px;
+      border: 1px solid var(--en-border);
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
     }
     .article-card:active { transform: scale(0.98); }
-    .article-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
-    .article-preview { font-size: 13px; color: var(--sub); line-height: 1.5;
-      overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-    .article-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
-    .article-tag { font-size: 11px; background: #EEF2FF; color: #4F46E5; padding: 3px 10px; border-radius: 8px; font-weight: 600; }
-    .article-arrow { font-size: 20px; color: #ccc; }
-    .empty-state { text-align: center; padding: 80px 0; }
+    .article-card-inner { display: flex; gap: 16px; align-items: flex-start; }
+    .article-thumb {
+      width: 72px; height: 72px;
+      border-radius: 14px;
+      background: #F0F0EE;
+      object-fit: cover;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+    }
+    .article-body { flex: 1; min-width: 0; }
+    .article-title {
+      font-size: 15px; font-weight: 700;
+      color: var(--en-primary);
+      line-height: 1.4;
+      margin-bottom: 6px;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .article-meta {
+      font-size: 12px; color: var(--en-sub);
+      display: flex; gap: 10px; align-items: center;
+    }
+    .article-meta-dot { color: var(--en-border); }
+    .article-preview {
+      font-size: 13px; color: var(--en-sub);
+      line-height: 1.5;
+      margin-top: 6px;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .article-arrow {
+      color: var(--en-sub); font-size: 22px;
+      flex-shrink: 0; align-self: center;
+    }
+
+    .article-card-completed {
+      position: relative;
+    }
+    .article-card-completed::after {
+      content: '✓';
+      position: absolute; top: 14px; right: 16px;
+      width: 22px; height: 22px;
+      background: var(--en-success);
+      color: #fff; border-radius: 50%;
+      font-size: 12px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── Reader ── */
+    .reader-header {
+      background: var(--en-card);
+      border-bottom: 1px solid var(--en-border);
+      padding: 16px 20px 14px;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .reader-progress {
+      height: 3px; background: var(--en-border);
+      border-radius: 2px; margin-top: 10px; overflow: hidden;
+    }
+    .reader-progress-fill {
+      height: 100%; background: var(--en-accent);
+      border-radius: 2px;
+      width: 0%; transition: width 0.3s ease;
+    }
+
+    .reader-body {
+      padding: 32px 24px 120px;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+    .reader-article-title {
+      font-family: 'Klee One', cursive;
+      font-size: 26px; font-weight: 400;
+      color: var(--en-primary);
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+    .reader-article-meta {
+      font-size: 12px; color: var(--en-sub);
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--en-border);
+    }
+    .reader-image {
+      width: 100%; border-radius: 16px;
+      margin-bottom: 28px;
+      display: block;
+    }
+    .reader-article-content {
+      font-family: 'Klee One', cursive;
+      font-size: 18px;
+      line-height: 2;
+      color: var(--en-primary);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .reader-article-content p {
+      margin: 0 0 1.5em 0;
+      text-indent: 2em;
+    }
+
+    /* ── Bottom action ── */
+    .reader-footer {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--en-card);
+      border-top: 1px solid var(--en-border);
+      padding: 12px 20px;
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      z-index: 20;
+    }
+    .打卡-btn {
+      width: 100%; padding: 15px;
+      background: var(--en-primary); color: #fff;
+      border: none; border-radius: 14px;
+      font-size: 16px; font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .打卡-btn:active { opacity: 0.8; }
+    .打卡-btn:disabled {
+      background: var(--en-sub); cursor: default;
+    }
+
+    /* ── Done overlay ── */
+    .done-overlay {
+      position: fixed; inset: 0;
+      background: rgba(250,250,248,0.95);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 30;
+      backdrop-filter: blur(8px);
+    }
+    .done-card {
+      background: var(--en-card);
+      border-radius: 28px;
+      padding: 40px 32px;
+      text-align: center;
+      border: 1px solid var(--en-border);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+      max-width: 300px; width: 90%;
+    }
+    .done-emoji { font-size: 56px; margin-bottom: 16px; }
+    .done-title {
+      font-size: 20px; font-weight: 700;
+      color: var(--en-primary); margin-bottom: 8px;
+    }
+    .done-sub {
+      font-size: 14px; color: var(--en-sub);
+      line-height: 1.5; margin-bottom: 24px;
+    }
+    .done-btn {
+      width: 100%; padding: 14px;
+      background: var(--en-primary); color: #fff;
+      border: none; border-radius: 14px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ── Empty ── */
+    .empty-state {
+      text-align: center; padding: 80px 24px;
+    }
     .empty-icon { font-size: 64px; margin-bottom: 16px; }
-    /* Article reader */
-    .reader-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #4F46E5; color: #fff; }
-    .reader-body { padding: 16px; }
-    .reader-title { font-size: 22px; font-weight: 800; margin-bottom: 16px; }
-    .reader-image { width: 100%; border-radius: 12px; margin-bottom: 16px; }
-    .reader-content { font-size: 15px; line-height: 1.8; color: var(--text); white-space: pre-wrap; }
-    /* Nav bar */
+    .empty-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+    .empty-sub { font-size: 14px; color: var(--en-sub); }
+
+    /* ── Nav bar ── */
     .nav-bar {
       position: fixed; bottom: 0; left: 0; right: 0;
-      background: #fff; border-top: 1px solid var(--border);
-      display: flex; padding: 8px 0; padding-bottom: max(8px, env(safe-area-inset-bottom));
+      background: var(--en-card);
+      border-top: 1px solid var(--en-border);
+      display: flex;
+      padding: 8px 0;
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+      z-index: 15;
     }
-    .nav-item { flex: 1; text-align: center; font-size: 11px; color: var(--sub); text-decoration: none; }
-    .nav-item .nav-icon { font-size: 22px; display: block; }
-    .nav-item.active { color: #4F46E5; }
+    .nav-item {
+      flex: 1; text-align: center;
+      font-size: 11px; color: var(--en-sub);
+      text-decoration: none;
+    }
+    .nav-item .nav-icon { font-size: 22px; display: block; margin-bottom: 2px; }
+    .nav-item.active { color: var(--en-accent); }
+
     body { padding-bottom: 72px; }
+
+    @media (orientation: landscape) {
+      .reader-body { padding: 24px 48px 100px; }
+      .reader-article-content { font-size: 19px; line-height: 2.1; }
+    }
   </style>
 </head>
 <body>
 
+<!-- ═══ LIST VIEW ═══ -->
 <div id="list-view">
-  <div class="page-header">
-    <a href="index.html" class="back-btn">← 返回</a>
-    <span style="font-weight:700">英文阅读</span>
+  <div class="header">
+    <div class="header-top">
+      <a href="today.html" class="back-btn">← 返回</a>
+      <div class="header-title">英文阅读</div>
+    </div>
   </div>
-  <div class="article-list" id="article-list">
-    <div style="text-align:center;padding:40px;color:var(--sub)">加载中...</div>
+
+  <div id="article-list">
+    <div style="text-align:center;padding:60px 0;color:var(--en-sub)">加载中...</div>
   </div>
 </div>
 
+<!-- ═══ READER VIEW ═══ -->
 <div id="reader-view" style="display:none">
   <div class="reader-header">
-    <a href="#" class="back-btn" onclick="closeReader()">← 返回</a>
-    <span style="font-weight:700" id="reader-title-nav">阅读</span>
+    <div class="header-top">
+      <a href="#" class="back-btn" id="reader-back">← 返回</a>
+      <div class="header-title" id="reader-nav-title">阅读</div>
+    </div>
+    <div class="reader-progress">
+      <div class="reader-progress-fill" id="reader-progress-fill"></div>
+    </div>
   </div>
-  <div class="reader-body">
-    <img class="reader-image" id="reader-image" src="" style="display:none">
-    <div class="reader-content" id="reader-content"></div>
+
+  <div class="reader-body" id="reader-body">
+    <img class="reader-image" id="reader-image" src="" style="display:none" />
+    <div class="reader-article-content" id="reader-content"></div>
+  </div>
+
+  <div class="reader-footer">
+    <button class="打卡-btn" id="打卡-btn" onclick="submitReading()">打卡完成 ✓</button>
+  </div>
+</div>
+
+<!-- ═══ DONE OVERLAY ═══ -->
+<div id="done-overlay" class="done-overlay" style="display:none">
+  <div class="done-card">
+    <div class="done-emoji">🌟</div>
+    <div class="done-title">阅读打卡完成！</div>
+    <div class="done-sub">坚持阅读，英语越来越好</div>
+    <button class="done-btn" onclick="returnToToday()">返回任务页</button>
   </div>
 </div>
 
 <nav class="nav-bar">
-  <a href="index.html" class="nav-item active">
+  <a href="index.html" class="nav-item">
     <span class="nav-icon">🏠</span>首页
   </a>
-  <a href="today.html" class="nav-item">
+  <a href="today.html" class="nav-item active">
     <span class="nav-icon">📅</span>今日
   </a>
   <a href="profile.html" class="nav-item">
@@ -80,59 +316,167 @@
 
 <script>
 const API = 'http://' + location.hostname + ':8080/api';
+let currentArticleId = null;
+let currentArticleTitle = '';
+let completedArticles = new Set();
+
+function getWeekDate() {
+  const today = new Date();
+  const day = today.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diff);
+  return monday.toISOString().slice(0, 10);
+}
 
 async function loadArticles() {
-  const res = await fetch(API + '/english/articles?week_date=2026-05-11');
+  // 显示所有文章（来自最新批次）
+  const res = await fetch(API + '/english/articles');
   const data = await res.json();
   const articles = data.articles || [];
-  console.log('API response:', data);
-  console.log('Articles count:', articles.length);
+
+  // 加载今日已完成的打卡记录
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const logRes = await fetch(API + '/english/daily-log?child_id=1&date=' + today);
+    const logData = await logRes.json();
+    (logData.log || []).forEach(l => {
+      if (l.task_type === 'reading') completedArticles.add(l.article_id);
+    });
+  } catch(e) {}
 
   if (articles.length === 0) {
     document.getElementById('article-list').innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">📄</div>
-        <div class="empty-title">暂无文章</div>
-        <div class="empty-sub">家长配置后即可阅读</div>
+        <div class="empty-icon">📖</div>
+        <div class="empty-title">本周暂无阅读文章</div>
+        <div class="empty-sub">家长配置后即可开始阅读</div>
       </div>`;
     return;
   }
 
   document.getElementById('article-list').innerHTML = articles.map(a => {
-    const imgUrls = Array.isArray(a.image_urls) ? a.image_urls : (a.image_urls ? JSON.parse(a.image_urls) : []);
-    const preview = (a.content || '').slice(0, 60);
+    const thumb = `<div class="article-thumb">📄</div>`;
+    const preview = (a.content || '').replace(/\n/g, ' ').slice(0, 80);
+    const isDone = completedArticles.has(a.id);
     return `
-      <div class="article-card" onclick="openArticle(${a.id}, '${encodeURIComponent(a.title)}')">
-        <div class="article-title">${a.title}</div>
-        <div class="article-preview">${preview}</div>
-        <div class="article-footer">
-          <span class="article-tag">Week ${a.week_date || ''}</span>
-          <span class="article-arrow">›</span>
+      <div class="article-card ${isDone ? 'article-card-completed' : ''}"
+           onclick="openArticle(${a.id}, '${escapeHtml(a.title || 'Reading')}')">
+        <div class="article-card-inner">
+          ${thumb}
+          <div class="article-body">
+            <div class="article-title">${a.title || 'Reading'}</div>
+            <div class="article-meta">
+              <span>Week ${a.week || ''}</span>
+            </div>
+            <div class="article-preview">${preview}</div>
+          </div>
+          <div class="article-arrow">›</div>
         </div>
       </div>`;
   }).join('');
 }
 
+function tryParseImgUrls(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  try { return JSON.parse(val); } catch { return []; }
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"');
+}
+
 async function openArticle(id, title) {
-  const res = await fetch(API + '/english/articles?week_date=2026-05-11');
+  currentArticleId = id;
+  currentArticleTitle = title;
+
+  const res = await fetch(API + '/english/articles');
   const data = await res.json();
   const article = (data.articles || []).find(a => a.id == id);
   if (!article) return;
 
-  const imgUrls = Array.isArray(article.image_urls) ? article.image_urls : (article.image_urls ? JSON.parse(article.image_urls) : []);
+  const week = article.week_date || getWeekDate();
+  const content = article.content || '';
 
   document.getElementById('list-view').style.display = 'none';
   document.getElementById('reader-view').style.display = 'block';
-  document.getElementById('reader-title-nav').textContent = article.title;
-  document.getElementById('reader-content').textContent = article.content || '';
+  document.getElementById('reader-nav-title').textContent = title;
+  document.getElementById('reader-progress-fill').style.width = '0%';
 
-  document.getElementById('reader-image').style.display = 'none';
+  const imgEl = document.getElementById('reader-image');
+  imgEl.style.display = 'none';
+
+  // 渲染正文段落
+  const paragraphs = content.split('\n').filter(p => p.trim());
+  const contentHtml = paragraphs.map(p => `<p>${p}</p>`).join('');
+  document.getElementById('reader-content').innerHTML = `<h2 class="reader-article-title">${article.title || ''}</h2>
+    <div class="reader-article-meta">Week ${week}</div>${contentHtml}`;
+
+  // 滚动时更新进度条
+  document.getElementById('reader-body').onscroll = null;
+  setTimeout(() => {
+    const body = document.getElementById('reader-body');
+    body.addEventListener('scroll', () => {
+      const scrollTop = body.scrollTop;
+      const scrollHeight = body.scrollHeight - body.clientHeight;
+      const pct = scrollHeight > 0 ? (scrollTop / scrollHeight * 100) : 0;
+      document.getElementById('reader-progress-fill').style.width = pct + '%';
+    });
+  }, 100);
+
+  const isDone = completedArticles.has(id);
+  const btn = document.getElementById('打卡-btn');
+  if (isDone) {
+    btn.textContent = '✓ 已打卡';
+    btn.disabled = true;
+  } else {
+    btn.textContent = '打卡完成 ✓';
+    btn.disabled = false;
+  }
 }
 
 function closeReader() {
-  event.preventDefault();
   document.getElementById('reader-view').style.display = 'none';
   document.getElementById('list-view').style.display = 'block';
+  currentArticleId = null;
+}
+
+document.getElementById('reader-back').addEventListener('click', function(e) {
+  e.preventDefault();
+  closeReader();
+});
+
+function submitReading() {
+  const today = new Date().toISOString().slice(0, 10);
+  const btn = document.getElementById('打卡-btn');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+
+  fetch(API + '/english/daily-log', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      child_id: 1,
+      date: today,
+      task_type: 'reading',
+      score: 1,
+      total: 1,
+      detail: JSON.stringify({ article_id: currentArticleId, title: currentArticleTitle })
+    })
+  }).then(r => r.json()).then(data => {
+    completedArticles.add(currentArticleId);
+    btn.textContent = '✓ 已打卡';
+    document.getElementById('done-overlay').style.display = 'flex';
+  }).catch(() => {
+    btn.textContent = '打卡完成 ✓';
+    btn.disabled = false;
+  });
+}
+
+function returnToToday() {
+  document.getElementById('done-overlay').style.display = 'none';
+  location.href = 'today.html';
 }
 
 loadArticles();

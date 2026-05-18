@@ -9,53 +9,93 @@
     body { background: var(--bg); }
     .back-btn { color: #fff; text-decoration: none; font-size: 15px; padding: 4px 8px; border-radius: 8px; background: rgba(255,255,255,20%); }
     .page-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #4F46E5; color: #fff; }
-    .pool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 16px; }
-    .pool-card {
-      background: #fff; border-radius: 16px; padding: 16px;
-      text-align: center; cursor: pointer; border: 2px solid transparent;
-      transition: border-color 0.2s;
+
+    /* Type selection */
+    .type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px; }
+    .type-card {
+      background: #fff; border-radius: 16px; padding: 20px 12px;
+      text-align: center; cursor: pointer; border: 3px solid transparent;
+      transition: border-color 0.2s, transform 0.1s;
     }
-    .pool-card.selected { border-color: #4F46E5; background: #EEF2FF; }
-    .pool-card .icon { font-size: 32px; }
-    .pool-card .name { font-weight: 700; font-size: 14px; margin-top: 6px; }
-    .pool-card .count { font-size: 12px; color: var(--sub); margin-top: 4px; }
+    .type-card:active { transform: scale(0.97); }
+    .type-card.selected { border-color: #4F46E5; background: #EEF2FF; }
+    .type-card .icon { font-size: 36px; display: block; margin-bottom: 8px; }
+    .type-card .name { font-weight: 700; font-size: 14px; }
+    .type-card .desc { font-size: 11px; color: var(--sub); margin-top: 4px; }
     .start-btn {
       display: block; width: calc(100% - 32px); margin: 0 16px 16px;
       padding: 14px; background: #4F46E5; color: #fff;
       border: none; border-radius: 14px; font-size: 16px; font-weight: 700;
       cursor: pointer;
     }
-    .start-btn:disabled { background: #ccc; }
-    /* Quiz mode */
+    .start-btn:disabled { background: #ccc; cursor: default; }
+
+    /* Quiz layout — all-in-one page */
     .quiz-container { padding: 16px; display: none; }
-    .quiz-progress { font-size: 13px; color: var(--sub); text-align: center; margin-bottom: 20px; }
+    .quiz-progress { font-size: 13px; color: var(--sub); text-align: center; margin-bottom: 12px; }
     .word-card {
-      background: #fff; border-radius: 20px; padding: 32px 24px;
-      text-align: center; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      background: #fff; border-radius: 20px; padding: 24px 20px;
+      text-align: center; margin-bottom: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
     }
+    .word-main { font-size: 48px; font-weight: 800; color: var(--primary); margin-bottom: 4px; line-height: 1; }
+    .word-sub { font-size: 14px; color: var(--sub); margin-bottom: 12px; }
     .play-btn {
-      width: 72px; height: 72px; border-radius: 50%; background: #4F46E5;
-      border: none; color: #fff; font-size: 28px; cursor: pointer;
-      margin-bottom: 20px; display: inline-flex; align-items: center; justify-content: center;
+      width: 60px; height: 60px; border-radius: 50%; background: #4F46E5;
+      border: none; color: #fff; font-size: 24px; cursor: pointer;
+      margin: 8px auto 12px; display: inline-flex; align-items: center; justify-content: center;
+      transition: none;
     }
-    .play-btn:active { transform: scale(0.95); }
-    .hint-text { font-size: 13px; color: var(--sub); margin-bottom: 16px; }
+    .play-btn:active { transform: scale(0.93); background: #3730A3; }
+
+    .section-label {
+      font-size: 12px; font-weight: 700; color: var(--sub);
+      text-align: left; margin: 12px 0 6px; padding-left: 4px;
+    }
     .answer-input {
-      width: 100%; padding: 14px; border: 2px solid #E5E7EB;
-      border-radius: 12px; font-size: 18px; text-align: center;
+      width: 100%; padding: 12px; border: 2px solid #E5E7EB;
+      border-radius: 12px; font-size: 20px; text-align: center;
       box-sizing: border-box; outline: none;
     }
     .answer-input:focus { border-color: #4F46E5; }
     .answer-input.correct { border-color: #22C55E; background: #F0FDF4; }
     .answer-input.wrong { border-color: #EF4444; background: #FEF2F2; }
-    .feedback { font-size: 15px; font-weight: 700; margin-top: 12px; min-height: 24px; }
-    .feedback.ok { color: #22C55E; }
-    .feedback.bad { color: #EF4444; }
-    .next-btn {
-      display: block; width: 100%; margin-top: 16px; padding: 14px;
+
+    .choices-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .choice-btn {
+      padding: 12px 8px; border: 2px solid #E5E7EB; border-radius: 12px;
+      background: #fff; font-size: 14px; font-weight: 600;
+      cursor: pointer; text-align: center; transition: none;
+      line-height: 1.4; min-height: 52px; display: flex; align-items: center; justify-content: center;
+    }
+    .choice-btn:active { transform: scale(0.97); }
+    .choice-btn.selected { border-color: #4F46E5; background: #EEF2FF; color: #3730A3; }
+    .choice-btn.correct { border-color: #22C55E; background: #DCFCE7; color: #15803D; }
+    .choice-btn.wrong { border-color: #EF4444; background: #FEE2E2; color: #DC2626; }
+
+    .feedback-bar {
+      display: flex; gap: 6px; margin-top: 10px; justify-content: center;
+    }
+    .feedback-item {
+      padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 700;
+    }
+    .feedback-item.ok { background: #DCFCE7; color: #15803D; }
+    .feedback-item.bad { background: #FEE2E2; color: #DC2626; }
+
+    .submit-btn {
+      display: block; width: 100%; margin-top: 14px; padding: 14px;
       background: #4F46E5; color: #fff; border: none; border-radius: 14px;
       font-size: 16px; font-weight: 700; cursor: pointer;
     }
+    .submit-btn:disabled { background: #ccc; cursor: default; }
+    .next-hint {
+      font-size: 13px; color: var(--sub); text-align: center; margin-top: 10px;
+    }
+
+    /* Irregular verb card */
+    .verb-card { background: #fff; border-radius: 20px; padding: 24px 20px; text-align: center; margin-bottom: 14px; }
+    .verb-original { font-size: 36px; font-weight: 800; color: var(--primary); margin-bottom: 4px; }
+    .verb-meaning { font-size: 16px; color: var(--sub); margin-bottom: 16px; }
+
     /* Result */
     .result-container { padding: 24px 16px; text-align: center; display: none; }
     .result-icon { font-size: 72px; margin-bottom: 16px; }
@@ -68,19 +108,27 @@
     }
     .result-back { background: #F3F4F6; color: var(--text); }
     .result-retry { background: #4F46E5; color: #fff; }
-    /* Nav bar */
+
+    /* Nav */
     .nav-bar {
       position: fixed; bottom: 0; left: 0; right: 0;
-      background: #fff; border-top: 1px solid var(--border);
-      display: flex; padding: 8px 0; padding-bottom: max(8px, env(safe-area-inset-bottom));
+      background: var(--card); border-top: 1px solid var(--border);
+      display: flex; padding: 8px 0;
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
     }
-    .nav-item {
-      flex: 1; text-align: center; font-size: 11px; color: var(--sub);
-      text-decoration: none; padding: 4px 0;
-    }
+    .nav-item { flex: 1; text-align: center; font-size: 11px; color: var(--sub); text-decoration: none; }
     .nav-item.active { color: #4F46E5; }
     .nav-item .nav-icon { font-size: 22px; display: block; }
     body { padding-bottom: 72px; }
+
+    @media (orientation: landscape) {
+      .quiz-container { padding: 12px 48px; }
+      .word-main { font-size: 60px; }
+      .type-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      .type-card { padding: 24px 16px; }
+      .type-card .icon { font-size: 44px; }
+      .type-card .name { font-size: 16px; }
+    }
   </style>
 </head>
 <body>
@@ -90,24 +138,40 @@
   <span style="font-weight:700">英文听写</span>
 </div>
 
-<!-- Pool selection -->
-<div id="pool-view">
-  <div style="padding:12px 16px 0;font-size:14px;color:var(--sub)">选择词库</div>
-  <div class="pool-grid" id="pool-grid"></div>
-  <button class="start-btn" id="btn-start" onclick="startQuiz()">开始听写</button>
+<!-- Type selection -->
+<div id="type-view">
+  <div style="padding:12px 16px 0;font-size:14px;color:var(--sub)">选择学习模式</div>
+  <div class="type-grid">
+    <div class="type-card" id="type-spelling" onclick="location.href='english-dictation.html?type=spelling'">
+      <span class="icon">📝</span>
+      <div class="name">Spelling</div>
+      <div class="desc">听写 · 意思 · 词性</div>
+    </div>
+    <div class="type-card" id="type-irregular" onclick="location.href='english-dictation.html?type=irregular'">
+      <span class="icon">🔄</span>
+      <div class="name">Irregular Verbs</div>
+      <div class="desc">不规则动词变形</div>
+    </div>
+    <div class="type-card" id="type-pep" onclick="location.href='english-dictation.html?type=pep'">
+      <span class="icon">📖</span>
+      <div class="name">PEP 词汇</div>
+      <div class="desc">听写 · 意思</div>
+    </div>
+  </div>
+  <button class="start-btn" id="btn-start" onclick="startQuiz()" disabled>开始学习</button>
+</div>
+
+<audio id="tts-audio" style="display:none" preload="auto"></audio>
+<!-- Loading 遮罩 -->
+<div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(255,255,255,0.92);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px">
+  <div style="font-size:48px">🔊</div>
+  <div style="font-size:16px;color:#666">正在加载音频…</div>
 </div>
 
 <!-- Quiz mode -->
 <div id="quiz-view" class="quiz-container">
   <div class="quiz-progress" id="quiz-progress"></div>
-  <div class="word-card">
-    <button class="play-btn" id="btn-play" onclick="playWord()">🔊</button>
-    <div class="hint-text">听发音，写出英文单词</div>
-    <input class="answer-input" id="answer-input" autocomplete="off" autocorrect="off"
-           spellcheck="false" placeholder="输入英语单词" onkeydown="if(event.key==='Enter')checkAnswer()">
-    <div class="feedback" id="feedback"></div>
-  </div>
-  <button class="next-btn" id="btn-next" onclick="nextWord()">下一题</button>
+  <div id="word-area"></div>
 </div>
 
 <!-- Result -->
@@ -122,166 +186,412 @@
 </div>
 
 <nav class="nav-bar">
-  <a href="index.html" class="nav-item active">
-    <span class="nav-icon">🏠</span>首页
-  </a>
-  <a href="today.html" class="nav-item">
-    <span class="nav-icon">📅</span>今日
-  </a>
-  <a href="profile.html" class="nav-item">
-    <span class="nav-icon">👤</span>我的
-  </a>
+  <a href="index.html" class="nav-item active"><span class="nav-icon">🏠</span>首页</a>
+  <a href="today.html" class="nav-item"><span class="nav-icon">📅</span>今日</a>
+  <a href="profile.html" class="nav-item"><span class="nav-icon">👤</span>我的</a>
 </nav>
 
 <script>
 const API = 'http://' + location.hostname + ':8080/api';
 
-let allWords = [];
-let selectedPools = new Set();
+let currentType = null;
+let allWords = { spelling: [], irregular: [], pep: [] };
 let quizWords = [];
 let currentIdx = 0;
 let correctCount = 0;
 let wrongIds = new Set();
-let poolInfo = {};
 
-async function loadPools() {
-  // 加载所有词库
-  const [spelling, irregular, pep] = await Promise.all([
-    fetch(API + '/english/words?week_date=2026-05-11&word_type=spelling').then(r => r.json()),
-    fetch(API + '/english/words?week_date=2026-05-11&word_type=irregular').then(r => r.json()),
-    fetch(API + '/english/words?week_date=2026-05-11&word_type=pep').then(r => r.json()),
+// ── Load data ──────────────────────────────────────────────
+async function loadWords() {
+  const res = await Promise.all([
+    fetch(API + '/english/words?week_date=2026-05-11&type=spelling').then(r => r.json()),
+    fetch(API + '/english/words?week_date=2026-05-11&type=irregular').then(r => r.json()),
+    fetch(API + '/english/words?week_date=2026-05-11&type=pep').then(r => r.json()),
   ]);
-
-  poolInfo = {
-    spelling: { name: 'Spelling L30+L31', icon: '📚', words: spelling.words || [] },
-    irregular: { name: 'Irregular Verbs', icon: '🔄', words: irregular.words || [] },
-    pep: { name: 'PEP 词汇', icon: '📖', words: pep.words || [] },
+  allWords = {
+    spelling: (res[0].words || []).map(w => ({ ...w, _type: 'spelling' })),
+    irregular: (res[1].words || []).map(w => ({ ...w, _type: 'irregular' })),
+    pep: (res[2].words || []).map(w => ({ ...w, _type: 'pep' })),
   };
-
-  const grid = document.getElementById('pool-grid');
-  grid.innerHTML = Object.entries(poolInfo).map(([key, val]) => `
-    <div class="pool-card" id="pool-${key}" onclick="togglePool('${key}')">
-      <div class="icon">${val.icon}</div>
-      <div class="name">${val.name}</div>
-      <div class="count">${val.words.length} 词</div>
-    </div>
-  `).join('');
+  document.getElementById('type-spelling').querySelector('.desc').textContent =
+    `${allWords.spelling.length} 词 · 听写/意思/词性`;
+  document.getElementById('type-irregular').querySelector('.desc').textContent =
+    `${allWords.irregular.length} 词 · 动词变形`;
+  document.getElementById('type-pep').querySelector('.desc').textContent =
+    `${allWords.pep.length} 词 · 听写/意思`;
 }
 
-function togglePool(key) {
-  const card = document.getElementById('pool-' + key);
-  if (selectedPools.has(key)) {
-    selectedPools.delete(key);
-    card.classList.remove('selected');
-  } else {
-    selectedPools.add(key);
-    card.classList.add('selected');
-  }
-  document.getElementById('btn-start').disabled = selectedPools.size === 0;
+function selectType(type) {
+  currentType = type;
+  document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('type-' + type).classList.add('selected');
+  document.getElementById('btn-start').disabled = false;
+  const names = { spelling: 'Spelling', irregular: 'Irregular Verbs', pep: 'PEP 词汇' };
+  document.getElementById('btn-start').textContent = '开始学习 ' + names[type];
 }
 
 function startQuiz() {
-  if (selectedPools.size === 0) return;
-  quizWords = [];
-  for (const pool of selectedPools) {
-    quizWords.push(...poolInfo[pool].words.map(w => ({...w, pool})));
-  }
-  // 打乱顺序
-  quizWords.sort(() => Math.random() - 0.5);
+  if (!currentType) return;
+  quizWords = [...allWords[currentType]].sort(() => Math.random() - 0.5);
   currentIdx = 0;
   correctCount = 0;
   wrongIds.clear();
-
-  document.getElementById('pool-view').style.display = 'none';
+  document.getElementById('type-view').style.display = 'none';
   document.getElementById('quiz-view').style.display = 'block';
   document.getElementById('result-view').style.display = 'none';
-
   showWord();
 }
 
 function showWord() {
-  const word = quizWords[currentIdx];
-  document.getElementById('quiz-progress').textContent = `${currentIdx + 1} / ${quizWords.length}`;
-  document.getElementById('answer-input').value = '';
-  document.getElementById('answer-input').className = 'answer-input';
-  document.getElementById('feedback').textContent = '';
-  document.getElementById('btn-next').style.display = 'none';
-  document.getElementById('answer-input').focus();
-
-  // 自动播放
-  setTimeout(() => playWord(word.word), 300);
+  const w = quizWords[currentIdx];
+  const total = quizWords.length;
+  document.getElementById('quiz-progress').textContent = `${currentIdx + 1} / ${total}`;
+  if (currentType === 'spelling') showSpelling(w);
+  else if (currentType === 'irregular') showIrregular(w);
+  else showPEP(w);
+  // 自动播放 + 预加载下一词
+  const word = w.word;
+  setTimeout(() => {
+    playWord(word);
+    if (currentIdx + 1 < quizWords.length) {
+      preloadWord(quizWords[currentIdx + 1].word);
+    }
+  }, 100);
 }
 
+// ── Spelling: all in one page ───────────────────────────────
+function showSpelling(w) {
+  const meaningChoices = buildMeaningChoices(w, 'spelling');
+  const posChoices = buildPOSChoices(w);
+  const html = `
+    <div class="word-card">
+      <button class="play-btn" id="play-btn" onclick="playWord('${w.word}')">🔊</button>
+      <div style="font-size:13px;color:var(--sub);margin:6px 0 14px">点击播放，听写单词</div>
+      <div class="section-label">✏️ 拼写</div>
+      <input class="answer-input" id="spell-input" autocomplete="off" autocorrect="off"
+             spellcheck="false" placeholder="输入英语单词"
+             oninput="updateSubmitBtn()">
+    </div>
+    <div class="word-card">
+      <div class="section-label">📖 选择中文意思</div>
+      <div class="choices-grid" id="meaning-choices">
+        ${meaningChoices.map((c, i) => `<button class="choice-btn" data-idx="${i}" onclick="pickChoice('meaning',${i},'${c.replace(/'/g,"\\'")}')">${c}</button>`).join('')}
+      </div>
+    </div>
+    <div class="word-card">
+      <div class="section-label">🏷️ 选择词性</div>
+      <div class="choices-grid" id="pos-choices">
+        ${posChoices.map((c, i) => `<button class="choice-btn" data-idx="${i}" onclick="pickChoice('pos',${i},'${c}')">${c}</button>`).join('')}
+      </div>
+    </div>
+    <div id="feedback-area"></div>
+    <button class="submit-btn" id="submit-btn" onclick="submitSpelling()" disabled>提交答案</button>
+  `;
+  document.getElementById('word-area').innerHTML = html;
+  setTimeout(() => {
+    playWord(w.word);
+    document.getElementById('spell-input').focus();
+  }, 200);
+  window._selectedMeaning = null;
+  window._selectedPOS = null;
+  window._currentWord = w;
+}
+
+function updateSubmitBtn() {
+  const spellVal = document.getElementById('spell-input')?.value.trim();
+  const btn = document.getElementById('submit-btn');
+  if (!btn) return;
+  btn.disabled = !(spellVal && window._selectedMeaning !== null && window._selectedPOS !== null);
+}
+
+function pickChoice(type, idx, val) {
+  const container = document.getElementById(type + '-choices');
+  container.querySelectorAll('.choice-btn').forEach((b, i) => {
+    b.classList.toggle('selected', i === idx);
+  });
+  if (type === 'meaning') window._selectedMeaning = val;
+  else window._selectedPOS = val;
+  updateSubmitBtn();
+}
+
+function submitSpelling() {
+  const w = window._currentWord;
+  const input = document.getElementById('spell-input');
+  const spellVal = input.value.trim().toLowerCase();
+  const correctSpell = w.word.toLowerCase();
+  const spellOk = spellVal === correctSpell;
+
+  const meaningOk = window._selectedMeaning === w.meaning;
+  const posOk = window._selectedPOS === (w.pos || '其他');
+
+  input.disabled = true;
+  input.classList.add(spellOk ? 'correct' : 'wrong');
+
+  // meaning
+  const meaningBtns = document.getElementById('meaning-choices').querySelectorAll('.choice-btn');
+  meaningBtns.forEach(b => {
+    b.disabled = true;
+    if (b.textContent === w.meaning) b.className = 'choice-btn correct';
+    else if (b.classList.contains('selected') && !meaningOk) b.className = 'choice-btn wrong';
+  });
+
+  // pos
+  const posBtns = document.getElementById('pos-choices').querySelectorAll('.choice-btn');
+  posBtns.forEach(b => {
+    b.disabled = true;
+    if (b.textContent === (w.pos || '其他')) b.className = 'choice-btn correct';
+    else if (b.classList.contains('selected') && !posOk) b.className = 'choice-btn wrong';
+  });
+
+  const allOk = spellOk && meaningOk && posOk;
+  if (allOk) correctCount++;
+  else {
+    wrongIds.add(w.id);
+    recordWrongbook(w, spellVal);
+  }
+
+  document.getElementById('feedback-area').innerHTML = `
+    <div class="feedback-bar">
+      <span class="feedback-item ${spellOk ? 'ok' : 'bad'}">拼写 ${spellOk ? '✅' : '❌'}</span>
+      <span class="feedback-item ${meaningOk ? 'ok' : 'bad'}">意思 ${meaningOk ? '✅' : '❌'}</span>
+      <span class="feedback-item ${posOk ? 'ok' : 'bad'}">词性 ${posOk ? '✅' : '❌'}</span>
+    </div>
+  `;
+  document.getElementById('submit-btn').style.display = 'none';
+  document.getElementById('word-area').innerHTML += `<div class="next-hint" id="next-hint">即将进入下一题…</div>`;
+  setTimeout(toNextWord, 1200);
+}
+
+function buildMeaningChoices(correctWord, poolKey) {
+  const pool = poolKey === 'spelling' ? allWords.spelling : allWords.pep;
+  const others = pool.map(w2 => w2.meaning).filter(m => m && m !== correctWord.meaning);
+  const choices = others.sort(() => Math.random() - 0.5).slice(0, 3);
+  choices.push(correctWord.meaning);
+  return choices.sort(() => Math.random() - 0.5);
+}
+
+function buildPOSChoices(w) {
+  const all = ['n.', 'v.', 'adj.', 'adv.', 'pron.', 'prep.', 'conj.', 'n./ adj.', 'adj./ v.', 'v./ n.', 'n./ v.'];
+  const correct = w.pos || '其他';
+  const others = all.filter(p => p !== correct);
+  const choices = others.sort(() => Math.random() - 0.5).slice(0, 3);
+  choices.push(correct);
+  return choices.sort(() => Math.random() - 0.5);
+}
+
+// ── PEP: all in one page ───────────────────────────────────
+function showPEP(w) {
+  const meaningChoices = buildMeaningChoices(w, 'pep');
+  const html = `
+    <div class="word-card">
+      <button class="play-btn" id="play-btn" onclick="playWord('${w.word}')">🔊</button>
+      <div style="font-size:13px;color:var(--sub);margin:6px 0 14px">点击播放，听写单词</div>
+      <div class="section-label">✏️ 拼写</div>
+      <input class="answer-input" id="spell-input" autocomplete="off" autocorrect="off"
+             spellcheck="false" placeholder="输入英语单词"
+             oninput="updateSubmitBtnPEP()">
+    </div>
+    <div class="word-card">
+      <div class="section-label">📖 选择中文意思</div>
+      <div class="choices-grid" id="meaning-choices">
+        ${meaningChoices.map((c, i) => `<button class="choice-btn" data-idx="${i}" onclick="pickChoicePEP(${i},'${c.replace(/'/g,"\\'")}')">${c}</button>`).join('')}
+      </div>
+    </div>
+    <div id="feedback-area"></div>
+    <button class="submit-btn" id="submit-btn" onclick="submitPEP()" disabled>提交答案</button>
+  `;
+  document.getElementById('word-area').innerHTML = html;
+  setTimeout(() => {
+    playWord(w.word);
+    document.getElementById('spell-input').focus();
+  }, 200);
+  window._selectedMeaning = null;
+  window._currentWord = w;
+}
+
+function updateSubmitBtnPEP() {
+  const spellVal = document.getElementById('spell-input')?.value.trim();
+  const btn = document.getElementById('submit-btn');
+  if (!btn) return;
+  btn.disabled = !(spellVal && window._selectedMeaning !== null);
+}
+
+function pickChoicePEP(idx, val) {
+  document.querySelectorAll('#meaning-choices .choice-btn').forEach((b, i) => {
+    b.classList.toggle('selected', i === idx);
+  });
+  window._selectedMeaning = val;
+  updateSubmitBtnPEP();
+}
+
+function submitPEP() {
+  const w = window._currentWord;
+  const input = document.getElementById('spell-input');
+  const spellVal = input.value.trim().toLowerCase();
+  const spellOk = spellVal === w.word.toLowerCase();
+  const meaningOk = window._selectedMeaning === w.meaning;
+
+  input.disabled = true;
+  input.classList.add(spellOk ? 'correct' : 'wrong');
+
+  const meaningBtns = document.getElementById('meaning-choices').querySelectorAll('.choice-btn');
+  meaningBtns.forEach(b => {
+    b.disabled = true;
+    if (b.textContent === w.meaning) b.className = 'choice-btn correct';
+    else if (b.classList.contains('selected') && !meaningOk) b.className = 'choice-btn wrong';
+  });
+
+  const allOk = spellOk && meaningOk;
+  if (allOk) correctCount++;
+  else {
+    wrongIds.add(w.id);
+    recordWrongbook(w, spellVal);
+  }
+
+  document.getElementById('feedback-area').innerHTML = `
+    <div class="feedback-bar">
+      <span class="feedback-item ${spellOk ? 'ok' : 'bad'}">拼写 ${spellOk ? '✅' : '❌'}</span>
+      <span class="feedback-item ${meaningOk ? 'ok' : 'bad'}">意思 ${meaningOk ? '✅' : '❌'}</span>
+    </div>
+  `;
+  document.getElementById('submit-btn').style.display = 'none';
+  document.getElementById('word-area').innerHTML += `<div class="next-hint" id="next-hint">即将进入下一题…</div>`;
+  setTimeout(toNextWord, 1200);
+}
+
+// ── Irregular Verbs: all in one page ──────────────────────
+function showIrregular(w) {
+  const [base, past] = w.word.split('/');
+  const html = `
+    <div class="verb-card">
+      <div class="verb-original">${base}</div>
+      <div class="verb-meaning">${w.meaning}</div>
+      <div class="section-label">🔄 填写过去式</div>
+      <input class="answer-input" id="tense-input" autocomplete="off" autocorrect="off"
+             spellcheck="false" placeholder="输入过去式"
+             oninput="updateSubmitBtnIrregular()">
+    </div>
+    <div id="feedback-area"></div>
+    <button class="submit-btn" id="submit-btn" onclick="submitIrregular('${past}')" disabled>提交答案</button>
+  `;
+  document.getElementById('word-area').innerHTML = html;
+  document.getElementById('tense-input').focus();
+  window._currentWord = w;
+  window._correctPast = past;
+}
+
+function updateSubmitBtnIrregular() {
+  const val = document.getElementById('tense-input')?.value.trim();
+  const btn = document.getElementById('submit-btn');
+  if (!btn) return;
+  btn.disabled = !val;
+}
+
+function submitIrregular(correctPast) {
+  const input = document.getElementById('tense-input');
+  const userVal = input.value.trim().toLowerCase();
+  const ok = userVal === correctPast.toLowerCase();
+  input.disabled = true;
+  input.classList.add(ok ? 'correct' : 'wrong');
+  if (!ok) {
+    wrongIds.add(window._currentWord.id);
+    recordWrongbook(window._currentWord, userVal);
+  } else {
+    correctCount++;
+  }
+  document.getElementById('feedback-area').innerHTML = `
+    <div class="feedback-bar">
+      <span class="feedback-item ${ok ? 'ok' : 'bad'}">${ok ? '✅ 正确！' : '❌ 正确答案：' + correctPast}</span>
+    </div>
+  `;
+  document.getElementById('submit-btn').style.display = 'none';
+  document.getElementById('word-area').innerHTML += `<div class="next-hint">即将进入下一题…</div>`;
+  setTimeout(toNextWord, 1200);
+}
+
+// ── Shared helpers ─────────────────────────────────────────
 function playWord(word) {
-  const w = word || quizWords[currentIdx].word;
-  const audio = new Audio(API + '/english/tts?text=' + encodeURIComponent(w));
+  const audio = document.getElementById('tts-audio');
+  const overlay = document.getElementById('loading-overlay');
+  overlay.style.display = 'flex';
+  audio.src = API + '/english/tts?text=' + encodeURIComponent(word);
+  audio.currentTime = 0;
+  const hide = () => { overlay.style.display = 'none'; audio.removeEventListener('canplaythrough', hide); };
+  audio.addEventListener('canplaythrough', hide);
   audio.play().catch(() => {});
 }
 
-function checkAnswer() {
-  const input = document.getElementById('answer-input');
-  const userAns = input.value.trim().toLowerCase();
-  const correct = quizWords[currentIdx].word.toLowerCase();
-  const isCorrect = userAns === correct;
-
-  if (isCorrect) {
-    input.className = 'answer-input correct';
-    document.getElementById('feedback').textContent = '✅ 正确！';
-    document.getElementById('feedback').className = 'feedback ok';
-    correctCount++;
-  } else {
-    input.className = 'answer-input wrong';
-    document.getElementById('feedback').innerHTML =
-      '❌ 正确答案：<b>' + quizWords[currentIdx].word + '</b>';
-    document.getElementById('feedback').className = 'feedback bad';
-    wrongIds.add(quizWords[currentIdx].id);
-    // 记录到错题本
-    const w = quizWords[currentIdx];
-    fetch(API + '/english/wrongbook', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        word_id: w.id, word: w.word, pronunciation: w.pronunciation || '',
-        meaning: w.meaning || '', word_type: w.word_type || '', lesson: w.lesson || ''
-      })
-    });
-  }
-
-  document.getElementById('btn-next').style.display = 'block';
-  document.getElementById('btn-next').textContent =
-    currentIdx < quizWords.length - 1 ? '下一题 →' : '查看结果';
+// 预加载下一个词的音频
+function preloadWord(word) {
+  const audio = document.getElementById('tts-audio');
+  audio.src = API + '/english/tts?text=' + encodeURIComponent(word);
 }
 
-function nextWord() {
+function toNextWord() {
   currentIdx++;
-  if (currentIdx < quizWords.length) {
-    showWord();
-  } else {
-    showResult();
-  }
+  if (currentIdx < quizWords.length) showWord();
+  else showResult();
 }
 
 function showResult() {
   document.getElementById('quiz-view').style.display = 'none';
   document.getElementById('result-view').style.display = 'block';
-
-  const pct = Math.round(correctCount / quizWords.length * 100);
+  const totalSteps = currentType === 'spelling' ? quizWords.length * 3 : currentType === 'pep' ? quizWords.length * 2 : quizWords.length;
+  const pct = Math.round(correctCount / totalSteps * 100);
   document.getElementById('result-score').textContent = pct + '%';
-  document.getElementById('result-detail').textContent =
-    `答对 ${correctCount} / ${quizWords.length} 题`;
+  document.getElementById('result-detail').textContent = `答对 ${correctCount} 题（共 ${quizWords.length} 词）`;
   document.getElementById('result-icon').textContent = pct >= 90 ? '🏆' : pct >= 70 ? '👍' : '💪';
+
+  // 记录打卡
+  const today = new Date().toISOString().slice(0, 10);
+  // detail 里存各阶段成绩，下次 POST 时合并
+  const newDetail = {};
+  newDetail[currentType] = correctCount;
+  const existing = window._enLogDetail || {};
+  const merged = { ...existing, ...newDetail };
+  window._enLogDetail = merged;
+  fetch(API + '/english/daily-log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      child_id: 1,
+      date: today,
+      task_type: 'en_dictation',
+      score: correctCount,
+      total: quizWords.length,
+      detail: JSON.stringify(merged)
+    })
+  }).catch(() => {});
 }
 
 function restartQuiz() {
   document.getElementById('result-view').style.display = 'none';
-  document.getElementById('pool-view').style.display = 'block';
   document.getElementById('quiz-view').style.display = 'none';
-  selectedPools.clear();
-  document.querySelectorAll('.pool-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('type-view').style.display = 'block';
+  currentType = null;
+  document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
   document.getElementById('btn-start').disabled = true;
 }
 
-loadPools();
+function recordWrongbook(w, userAnswer) {
+  fetch(API + '/english/wrongbook', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      word_id: w.id, word: w.word, answer: userAnswer || '', correct: 0,
+      word_type: w._type || w.word_type || '', lesson: w.lesson || '', meaning: w.meaning || ''
+    })
+  }).catch(() => {});
+}
+
+loadWords().then(() => {
+  const params = new URLSearchParams(location.search);
+  const autoType = params.get('type');
+  if (autoType && ['spelling', 'irregular', 'pep'].includes(autoType)) {
+    selectType(autoType);
+    startQuiz();
+  }
+});
 </script>
 </body>
 </html>

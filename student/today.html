@@ -97,7 +97,7 @@ async function load() {
     // 语文任务
     const cnTasks = cnData.tasks || [];
     // 英语每日任务（今天应做的）
-    const enSchedules = (enData.schedules || [])
+    const enSchedules = (enData.tasks || [])
       .filter(s => s.date === cnData.date && s.status !== 'completed');
 
     if (cnTasks.length === 0 && enSchedules.length === 0) {
@@ -156,23 +156,24 @@ function render(cnTasks, enSchedules) {
     });
   }
 
-  // 英语每日任务
-  for (const s of enSchedules) {
-    const taskData = s.task_data ? JSON.parse(s.task_data) : {};
-    const total = taskData.total || 0;
-    const taskTypeMap = { 'spelling': '拼写', 'irregular': '不规则动词', 'pep': 'PEP词汇', 'reading': '阅读' };
-    const iconMap = { 'spelling': '🔤', 'irregular': '🔄', 'pep': '📖', 'reading': '📄' };
+  // 英语每日任务：综合听写 + 阅读，两张卡
+  const hasEnSchedules = enSchedules.length > 0;
+  if (hasEnSchedules) {
+    // 英语听写：跳 english.html（内部自己组合 L30+L31+Set.3+Unit5）
     cards.push({
-      icon: iconMap[s.task_type] || '📚',
-      name: '英语·' + (taskTypeMap[s.task_type] || s.task_type),
-      sub: total > 0 ? (total + '个词') : '今日英语',
-      done: false, type: 'en_' + s.task_type, taskId: s.id, lang: 'en'
+      icon: '🔤', name: '英语听写', sub: '拼写·不规则动词·PEP词汇',
+      done: false, type: 'en_dictation', taskId: null, lang: 'en'
+    });
+    // 英语阅读
+    cards.push({
+      icon: '📄', name: '英语阅读', sub: '阅读理解打卡',
+      done: false, type: 'en_reading', taskId: null, lang: 'en'
     });
   }
 
   const list = document.getElementById('task-list');
-  list.innerHTML = cards.map(c => `
-    <div class="task-card ${c.done ? 'done' : ''}" onclick="go('${c.type}', ${c.taskId}, '${c.lang}')">
+  list.innerHTML = cards.map((c, i) => `
+    <div class="task-card ${c.done ? 'done' : ''}" onclick="go(${i}, '${c.lang}')">
       <div class="task-icon">${c.icon}</div>
       <div class="task-body">
         ${c.lang === 'en' ? '<span class="lang-tag en">EN</span>' : ''}
@@ -183,9 +184,13 @@ function render(cnTasks, enSchedules) {
       <div class="arrow">›</div>
     </div>
   `).join('');
+  window._cards = cards;
 }
 
-function go(type, taskId, lang) {
+function go(idx, lang) {
+  const card = window._cards[idx];
+  const type = card.type;
+  const taskId = card.taskId;
   if (lang === 'cn') {
     if (type === 'dictation') {
       location.href = 'dictation.html?task_id=' + taskId;
@@ -195,8 +200,8 @@ function go(type, taskId, lang) {
       location.href = 'review.html';
     }
   } else if (lang === 'en') {
-    if (type === 'en_spelling' || type === 'en_irregular' || type === 'en_pep') {
-      location.href = 'english.html?task_type=' + type.replace('en_', '') + '&schedule_id=' + taskId;
+    if (type === 'en_dictation') {
+      location.href = 'english-dictation.html';
     } else if (type === 'en_reading') {
       location.href = 'english-articles.html';
     }

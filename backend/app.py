@@ -2,7 +2,7 @@
 app.py — 听写 App 后端 API（Flask · 8080）
 """
 
-import os, json, uuid, sqlite3, base64, subprocess
+import os, json, uuid, sqlite3, base64, subprocess, urllib.request
 from datetime import datetime, date, timedelta
 from functools import wraps
 from flask import Flask, send_from_directory, jsonify, request, send_file
@@ -1060,39 +1060,61 @@ def api_english_upload():
 
 @app.route("/api/english/words", methods=["GET"])
 def api_english_words():
-    """获取本周英语单词"""
+    """获取本周英语单词，支持 batch_id 或 week_date 过滤"""
+    batch_id = request.args.get("batch_id", type=int)
     week_date = request.args.get("week_date", date.today().strftime("%Y-%m-%d"))
     word_type = request.args.get("type")  # spelling / irregular / pep
 
     db = get_db()
     cur = db.cursor()
-    if word_type:
-        cur.execute(
-            "SELECT id, word, pronunciation, pos, meaning, lesson, word_type FROM english_words WHERE week_date=? AND word_type=? ORDER BY id",
-            (week_date, word_type)
-        )
+
+    if batch_id:
+        # 按批次查
+        conditions = ["batch_id=?"]
+        params = [batch_id]
+        if word_type:
+            conditions.append("word_type=?")
+            params.append(word_type)
+        sql = f"SELECT id, word, pronunciation, pos, meaning, lesson, word_type FROM english_words WHERE {' AND '.join(conditions)} ORDER BY id"
+        cur.execute(sql, params)
     else:
-        cur.execute(
-            "SELECT id, word, pronunciation, pos, meaning, lesson, word_type FROM english_words WHERE week_date=? ORDER BY id",
-            (week_date,)
-        )
+        # 兼容原有 week_date 逻辑
+        if word_type:
+            cur.execute(
+                "SELECT id, word, pronunciation, pos, meaning, lesson, word_type FROM english_words WHERE week_date=? AND word_type=? ORDER BY id",
+                (week_date, word_type)
+            )
+        else:
+            cur.execute(
+                "SELECT id, word, pronunciation, pos, meaning, lesson, word_type FROM english_words WHERE week_date=? ORDER BY id",
+                (week_date,)
+            )
+
     rows = cur.fetchall()
     db.close()
 
     words = [dict(zip(["id","word","pronunciation","pos","meaning","lesson","word_type"], r)) for r in rows]
-    return jsonify({"week_date": week_date, "words": words})
+    result = {"week_date": week_date, "words": words}
+    if batch_id:
+        result["batch_id"] = batch_id
+    return jsonify(result)
 
 
 @app.route("/api/english/articles", methods=["GET"])
 def api_english_articles():
-    """获取本周阅读文章"""
-    week_date = request.args.get("week_date", date.today().strftime("%Y-%m-%d"))
+    """获取本周阅读文章；无 week_date 参数时返回全部"""
+    week_date = request.args.get("week_date", None)
     db = get_db()
     cur = db.cursor()
-    cur.execute(
-        "SELECT id, title, content, image_urls, week_date, order_num FROM english_articles WHERE week_date=? ORDER BY order_num",
-        (week_date,)
-    )
+    if week_date:
+        cur.execute(
+            "SELECT id, title, content, image_urls, week_date, order_num FROM english_articles WHERE week_date=? ORDER BY order_num",
+            (week_date,)
+        )
+    else:
+        cur.execute(
+            "SELECT id, title, content, image_urls, week_date, order_num FROM english_articles ORDER BY week_date DESC, order_num"
+        )
     rows = cur.fetchall()
     db.close()
     articles = []
@@ -1106,19 +1128,84 @@ def api_english_articles():
 
 @app.route("/api/english/schedule", methods=["GET"])
 def api_english_schedule():
-    """获取某天英语任务"""
+    """获取某天英语任务，自动fallback到上周内容"""
     target_date = request.args.get("date", date.today().strftime("%Y-%m-%d"))
     child_id = request.args.get("child_id", 1, type=int)
+
+    # 解析target_date对应的周一开始的week_date
+    target_dt = datetime.strptime(target_date, "%Y-%m-%d")
+    # Monday = 0, Sunday = 6
+    days_since_monday = target_dt.weekday()
+    week_start = (target_dt - timedelta(days=days_since_monday)).strftime("%Y-%m-%d")
+
     db = get_db()
     cur = db.cursor()
+
+    # 先查本周有没有数据
     cur.execute(
         "SELECT id, date, task_type, lesson, task_data, status FROM english_schedule WHERE child_id=? AND date=? ORDER BY task_type",
         (child_id, target_date)
     )
     rows = cur.fetchall()
+
+    # 本周没数据，基于当前激活批次生成任务
+    if not rows:
+        cur.execute("SELECT id FROM study_batch WHERE subject='en' AND is_active=1 LIMIT 1")
+        batch_row = cur.fetchone()
+        if batch_row:
+            batch_id = batch_row[0]
+            cur.execute("SELECT item_type, item_id FROM study_batch_item WHERE batch_id=?", (batch_id,))
+            items = cur.fetchall()
+            tasks = []
+            for (item_type, item_id) in items:
+                if item_type in ('spelling', 'irregular', 'pep'):
+                    cur.execute(f"SELECT COUNT(*) FROM english_words WHERE batch_id=? AND word_type=? AND lesson=?", (batch_id, item_type, item_id))
+                    cnt = cur.fetchone()[0]
+                    tasks.append({
+                        'id': 0, 'date': target_date, 'task_type': item_type,
+                        'lesson': item_id,
+                        'task_data': json.dumps({'lesson': item_id, 'count': cnt}),
+                        'status': 'pending'
+                    })
+            source_note = " (根据当前批次自动分配)"
+        else:
+            tasks = []
+            source_note = " (无配置)"
+    else:
+        source_note = ""
+
+    # 查今日英语打卡记录，标记已完成的任务
+    today_str = target_date
+    cur.execute(
+        "SELECT detail FROM english_daily_log WHERE child_id=? AND date=? AND task_type='en_dictation' ORDER BY id DESC LIMIT 1",
+        (child_id, today_str)
+    )
+    log_row = cur.fetchone()
+    completed_detail = {}
+    if log_row and log_row[0]:
+        try:
+            completed_detail = json.loads(log_row[0])
+        except:
+            pass
+
     db.close()
-    tasks = [dict(zip(["id","date","task_type","lesson","task_data","status"], r)) for r in rows]
-    return jsonify({"date": target_date, "tasks": tasks})
+    # 统一格式
+    normalized = []
+    for t in tasks:
+        # 根据 task_type 匹配 detail 中的分项
+        sub_key = t['task_type']  # spelling, irregular, pep
+        status = t.get('status', 'pending')
+        if completed_detail.get(sub_key, 0) > 0:
+            status = 'completed'
+        normalized.append({
+            'id': t.get('id', 0),
+            'date': t.get('date', target_date),
+            'task_type': t['task_type'],
+            'lesson': t['lesson'],
+            'task_data': t['task_data'],
+            'status': status
+        })
+    return jsonify({"date": target_date, "tasks": normalized, "source_note": source_note})
 
 
 @app.route("/api/english/weeks", methods=["GET"])
@@ -1229,13 +1316,16 @@ def api_english_daily_log():
     date_str = data["date"]
     task_type = data["task_type"]
     score = data.get("score", 0)
+    total = data.get("total", 0)
+    # detail 存各阶段小分（JSON 字符串）
+    detail = json.dumps(data.get("detail", {}))
     answers = json.dumps(data.get("answers", []))
 
     db = get_db()
     cur = db.cursor()
     cur.execute(
-        "INSERT INTO english_daily_log (child_id, date, task_type, score, answers) VALUES (?,?,?,?,?)",
-        (child_id, date_str, task_type, score, answers)
+        "INSERT INTO english_daily_log (child_id, date, task_type, score, total, answers) VALUES (?,?,?,?,?,?)",
+        (child_id, date_str, task_type, score, total, detail if data.get("detail") else answers)
     )
     db.commit()
     log_id = cur.lastrowid
@@ -1344,23 +1434,242 @@ def api_english_wrongbook_clear():
 
 
 # ═══════════════════════════════════════════════════════════════
-# 英文 TTS（调用本地 TTS 服务）
+# 英文 TTS（MiniMax T2A v2）
 # ═══════════════════════════════════════════════════════════════
 
 @app.route("/api/english/tts", methods=["GET"])
 def api_english_tts():
-    """英文单词 TTS，调用本地 edge-tts 服务"""
+    """英文单词 TTS，调用 MiniMax T2A v2"""
     text = request.args.get("text", "").strip()
     if not text:
         return jsonify({"error": "text required"}), 400
     try:
-        tts_url = f"http://localhost:8082/tts?text={text}&lang=en"
-        resp = requests.get(tts_url, timeout=5)
-        if resp.status_code == 200:
-            return resp.content, 200, {"Content-Type": "audio/mpeg"}
-        return jsonify({"error": "TTS failed"}), 500
+        api_key = os.environ.get("MINIMAX_API_KEY", "")
+        if not api_key:
+            return jsonify({"error": "MINIMAX_API_KEY not set"}), 500
+        payload = {
+            "model": "speech-02-hd",
+            "text": text,
+            "stream": False,
+            "voice_setting": {"voice_id": "male-qn-qingse"}
+        }
+        req = urllib.request.Request(
+            "https://api.minimax.chat/v1/t2a_v2",
+            data=json.dumps(payload).encode(),
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            method="POST"
+        )
+        resp = urllib.request.urlopen(req, timeout=10)
+        return resp.read(), 200, {"Content-Type": "audio/mpeg"}
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ═══════════════════════════════════════════════════════════════
+# 家长端 · 学习配置批次管理
+# ═══════════════════════════════════════════════════════════════
+
+@app.route("/api/parent/batch/list", methods=["GET"])
+def api_parent_batch_list():
+    """返回所有批次，按 subject 分组，当前生效的排前面"""
+    subject = request.args.get("subject")  # cn | en
+    db = get_db()
+    cur = db.cursor()
+    if subject:
+        cur.execute(
+            "SELECT id, subject, name, is_active, created_at FROM study_batch WHERE subject=? ORDER BY is_active DESC, created_at DESC",
+            (subject,)
+        )
+    else:
+        cur.execute("SELECT id, subject, name, is_active, created_at FROM study_batch ORDER BY is_active DESC, created_at DESC")
+    rows = cur.fetchall()
+    batches = []
+    for r in rows:
+        batch = dict(zip(["id","subject","name","is_active","created_at"], r))
+        cur.execute("SELECT item_type, item_id FROM study_batch_item WHERE batch_id=?", (batch["id"],))
+        items = [dict(zip(["item_type","item_id"], ri)) for ri in cur.fetchall()]
+        batch["items_json"] = json.dumps(items)
+        batches.append(batch)
+    db.close()
+    return jsonify({"batches": batches})
+
+
+@app.route("/api/parent/batch/options", methods=["GET"])
+def api_parent_batch_options():
+    """返回可选的配置项（语文单元/识字；英语词库/文章）"""
+    db = get_db()
+    cur = db.cursor()
+    result = {"chinese": [], "english": {}}
+
+    # 语文：从 words 表按 unit_id 分组
+    cur.execute("SELECT unit_id, unit_name, COUNT(*) FROM words GROUP BY unit_id, unit_name ORDER BY unit_id")
+    for (uid, uname, cnt) in cur.fetchall():
+        result["chinese"].append({
+            "item_type": "unit",
+            "item_id": uid,
+            "label": f"{uname}（{cnt}字）"
+        })
+
+    # 英语：从 english_words 读
+    cur.execute("SELECT DISTINCT lesson, word_type FROM english_words ORDER BY lesson")
+    lessons = cur.fetchall()
+    for (lesson, wtype) in lessons:
+        if wtype not in result["english"]:
+            result["english"][wtype] = []
+        result["english"][wtype].append({
+            "item_id": lesson,
+            "label": lesson,
+            "count": sum(1 for l, t in lessons if l == lesson)
+        })
+
+    # 英语文章
+    cur.execute("SELECT id, title FROM english_articles ORDER BY id")
+    result["english"]["reading"] = [
+        {"item_id": str(r[0]), "label": r[1][:30]} for r in cur.fetchall()
+    ]
+
+    db.close()
+    return jsonify(result)
+
+
+@app.route("/api/parent/batch/detail/<int:batch_id>", methods=["GET"])
+def api_parent_batch_detail(batch_id):
+    """返回某批次的详细信息（包含任务项）"""
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT id, subject, name, is_active, created_at FROM study_batch WHERE id=?", (batch_id,))
+    row = cur.fetchone()
+    if not row:
+        db.close()
+        return jsonify({"error": "not found"}), 404
+    batch = dict(zip(["id","subject","name","is_active","created_at"], row))
+
+    cur.execute("SELECT item_type, item_id FROM study_batch_item WHERE batch_id=?", (batch_id,))
+    batch["items"] = [dict(zip(["item_type","item_id"], r)) for r in cur.fetchall()]
+
+    # 填充任务详情
+    if batch["subject"] == "cn":
+        # 语文任务：查听写和背诵任务
+        dict_ids = [it["item_id"] for it in batch["items"] if it["item_type"] == "dictation"]
+        rec_ids = [it["item_id"] for it in batch["items"] if it["item_type"] == "recite"]
+        cur.execute("SELECT id, name FROM units WHERE id IN (" + ",".join(["?"]*len(dict_ids) if dict_ids else [0]) + ")", dict_ids)
+        batch["dictations"] = [{"id": r[0], "name": r[1]} for r in cur.fetchall()]
+        cur.execute("SELECT id, name FROM recitations WHERE id IN (" + ",".join(["?"]*len(rec_ids) if rec_ids else [0]) + ")", rec_ids)
+        batch["recitations"] = [{"id": r[0], "name": r[1]} for r in cur.fetchall()]
+    else:
+        # 英语任务：查 english_words 和 english_articles
+        cur.execute("SELECT word_type, COUNT(*) FROM english_words WHERE batch_id=? GROUP BY word_type", (batch_id,))
+        batch["word_summary"] = {r[0]: r[1] for r in cur.fetchall()}
+        cur.execute("SELECT COUNT(*) FROM english_articles WHERE batch_id=?", (batch_id,))
+        batch["article_count"] = cur.fetchone()[0]
+
+    db.close()
+    return jsonify(batch)
+
+
+@app.route("/api/parent/batch/create", methods=["POST"])
+def api_parent_batch_create():
+    """
+    创建新批次：
+    1. 将同学科旧批次 is_active=0
+    2. 写入 study_batch
+    3. 写入 study_batch_item
+    4. 更新 english_words / english_articles 的 batch_id
+    """
+    body = request.get_json()
+    subject = body.get("subject")  # cn | en
+    name = body.get("name", "")
+    items = body.get("items", [])  # [{item_type, item_id}]
+
+    if not subject or subject not in ("cn", "en"):
+        return jsonify({"error": "invalid subject"}), 400
+
+    db = get_db()
+    cur = db.cursor()
+
+    # 旧批次下线
+    cur.execute("UPDATE study_batch SET is_active=0 WHERE subject=?", (subject,))
+
+    # 新批次
+    cur.execute(
+        "INSERT INTO study_batch (subject, name, is_active) VALUES (?, ?, 1)",
+        (subject, name)
+    )
+    batch_id = cur.lastrowid
+
+    # 写任务项
+    for it in items:
+        cur.execute(
+            "INSERT INTO study_batch_item (batch_id, item_type, item_id) VALUES (?, ?, ?)",
+            (batch_id, it["item_type"], it["item_id"])
+        )
+
+    # 英语：更新 english_words 和 english_articles 的 batch_id
+    if subject == "en":
+        word_ids = [it["item_id"] for it in items if it["item_type"] in ("spelling", "irregular", "pep")]
+        article_ids = [it["item_id"] for it in items if it["item_type"] == "article"]
+        if word_ids:
+            placeholders = ",".join(["?"] * len(word_ids))
+            cur.execute(f"UPDATE english_words SET batch_id=? WHERE lesson IN ({placeholders})", [batch_id] + word_ids)
+        if article_ids:
+            placeholders = ",".join(["?"] * len(article_ids))
+            cur.execute(f"UPDATE english_articles SET batch_id=? WHERE id IN ({placeholders})", [batch_id] + article_ids)
+
+    db.commit()
+    db.close()
+    return jsonify({"batch_id": batch_id, "status": "ok"})
+
+
+@app.route("/api/parent/batch/activate", methods=["POST"])
+def api_parent_batch_activate():
+    """重新激活某批次"""
+    body = request.get_json()
+    batch_id = body.get("batch_id")
+    if not batch_id:
+        return jsonify({"error": "batch_id required"}), 400
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT subject FROM study_batch WHERE id=?", (batch_id,))
+    row = cur.fetchone()
+    if not row:
+        db.close()
+        return jsonify({"error": "not found"}), 404
+    subject = row[0]
+    cur.execute("UPDATE study_batch SET is_active=0 WHERE subject=?", (subject,))
+    cur.execute("UPDATE study_batch SET is_active=1 WHERE id=?", (batch_id,))
+    db.commit()
+    db.close()
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/parent/batch/current", methods=["GET"])
+def api_parent_batch_current():
+    """返回当前生效的语文和英语批次（孩子端用）"""
+    subject = request.args.get("subject")
+    db = get_db()
+    cur = db.cursor()
+    if subject:
+        cur.execute(
+            "SELECT id, subject, name, is_active, created_at FROM study_batch WHERE subject=? AND is_active=1",
+            (subject,)
+        )
+        row = cur.fetchone()
+        db.close()
+        if not row:
+            return jsonify({"batch": None})
+        return jsonify({"batch": dict(zip(["id","subject","name","is_active","created_at"], row))})
+    else:
+        cur.execute("SELECT id, subject, name, is_active, created_at FROM study_batch WHERE is_active=1")
+        rows = cur.fetchall()
+        db.close()
+        result = {}
+        for r in rows:
+            b = dict(zip(["id","subject","name","is_active","created_at"], r))
+            result[b["subject"]] = b
+        return jsonify(result)
 
 
 # ═══════════════════════════════════════════════════════════════
